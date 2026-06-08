@@ -57,13 +57,7 @@ const GRID_LAYOUTS = {
     draw: drawSquareCell,
     sample: sampleSquare,
   },
-  rectangles: {
-    label: 'Rectangles (wide)',
-    cols: 40, rows: 60,
-    cellW: 32, cellH: 20,
-    draw: drawRectCell,
-    sample: sampleSquare, // same bounding-box sampling
-  },
+
   hexagons: {
     label: 'Hexagons',
     cols: 30, rows: 35,
@@ -105,6 +99,13 @@ const GRID_LAYOUTS = {
     cellW: 16, cellH: 14,  // cH = cW * √3/2 ≈ 13.86 → 14 for equilateral triangles
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
+  },
+  rectangles: {
+    label: 'Rectangles (Wide)',
+    cols: 40, rows: 60,
+    cellW: 36, cellH: 18,  // 2:1 landscape aspect ratio
+    draw: drawRectCell,
+    sample: sampleSquare,
   },
 };
 
@@ -445,6 +446,12 @@ async function runPipeline() {
       const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
       cellW = cellSize;
       cellH = cellSize;
+    }
+
+    // For rectangles, preserve the 2:1 aspect ratio
+    if (selectedLayout === 'rectangles') {
+      cellW = Math.max(4, Math.round(baseLayout.cellW * scaleW));
+      cellH = Math.max(2, Math.round(cellW / 2));
     }
 
     // For iso triangles, preserve equilateral ratio: cellH = cellW * √3/2
