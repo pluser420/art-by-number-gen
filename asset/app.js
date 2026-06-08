@@ -606,6 +606,9 @@ function buildMosaicSVG(cellIndices, layout) {
   const gridPixelH = computeGridHeight(layout);
   const svg = makeSVG(gridPixelW, gridPixelH);
 
+  // White background — covers uncovered corners for triangle layout
+  svg.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#ffffff'));
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const idx   = row * cols + col;
@@ -715,26 +718,23 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
 }
 
 /** Triangle cell — gapless tiling.
- *  Up▲ at even cols, Down▽ at odd cols.
- *  Both use full cW width. Down▽ is offset left by cW/2 to sit between up▲ triangles.
- *  Fill only (no stroke). Grid lines drawn in post-pass.
+ *  Up▲ at even cols, Down▽ at odd cols shifted left by cW/2.
+ *  Fill only with overshoot. Grid lines drawn in post-pass.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o    = 0.5;
+  const o    = 1.5; // overshoot to fully seal gaps
 
   let pts, cx, cy;
   if (isUp) {
-    // Up▲: positioned at col * cW
     const x0   = col * cW;
     const midX = x0 + cW / 2;
     pts = `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`;
     cx  = midX;
     cy  = y0 + cH * 0.65;
   } else {
-    // Down▽: shifted left by cW/2 so it sits between two up▲ triangles
     const x0   = col * cW - cW / 2;
     const midX = x0 + cW / 2;
     pts = `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
