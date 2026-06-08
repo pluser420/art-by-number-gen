@@ -60,28 +60,28 @@ const GRID_LAYOUTS = {
 
   hexagons: {
     label: 'Hexagons',
-    cols: 30, rows: 35,
+    cols: 40, rows: 60,
     cellW: 40, cellH: 46,
     draw: drawHexCell,
     sample: sampleHex,
   },
   triangles: {
     label: 'Triangles',
-    cols: 40, rows: 60,   // each logical cell = 2 triangles (up + down)
+    cols: 80, rows: 60,   // each logical cell = 2 triangles (up + down)
     cellW: 24, cellH: 24,
     draw: drawTriangleCell,
     sample: sampleTriangle,
   },
   circles: {
     label: 'Circles',
-    cols: 30, rows: 40,
+    cols: 40, rows: 60,
     cellW: 32, cellH: 32,
     draw: drawCircleCell,
     sample: sampleSquare,
   },
   diamonds: {
     label: 'Diamonds',
-    cols: 40, rows: 60,
+    cols: 40, rows: 120,
     cellW: 28, cellH: 20,
     draw: drawDiamondCell,
     sample: sampleSquare,
@@ -435,7 +435,7 @@ async function runPipeline() {
     let cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
 
     // For square-cell layouts, enforce equal cellW and cellH so cells stay square
-    if (['squares', 'circles', 'triangles', 'diamonds'].includes(selectedLayout)) {
+    if (['squares', 'circles'].includes(selectedLayout)) {
       const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
       cellW = cellSize;
       cellH = cellSize;
