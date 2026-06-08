@@ -112,28 +112,29 @@ let customCols       = 40;
 let customRows       = 60;
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
-const fileInput       = document.getElementById('fileInput');
-const dropZone        = document.getElementById('dropZone');
-const previewSection  = document.getElementById('previewSection');
-const previewImg      = document.getElementById('previewImg');
-const imageInfo       = document.getElementById('imageInfo');
-const clearBtn        = document.getElementById('clearBtn');
-const errorBanner     = document.getElementById('errorBanner');
-const errorText       = document.getElementById('errorText');
-const dismissError    = document.getElementById('dismissError');
-const layoutSelect    = document.getElementById('layoutSelect');
-const colsInput       = document.getElementById('colsInput');
-const rowsInput       = document.getElementById('rowsInput');
-const pixelInfo       = document.getElementById('pixelInfo');
-const generateBtn     = document.getElementById('generateBtn');
-const loadingOverlay  = document.getElementById('loadingOverlay');
-const loadingText     = document.getElementById('loadingText');
-const resultsSection  = document.getElementById('resultsSection');
-const gridPreview     = document.getElementById('gridPreview');
-const mosaicPreview   = document.getElementById('mosaicPreview');
-const downloadGrid    = document.getElementById('downloadGrid');
-const downloadMosaic  = document.getElementById('downloadMosaic');
-const colorPalette    = document.getElementById('colorPalette');
+const fileInput        = document.getElementById('fileInput');
+const dropZone         = document.getElementById('dropZone');
+const previewPanel     = document.getElementById('previewPanel');
+const previewImg       = document.getElementById('previewImg');
+const previewFilename  = document.getElementById('previewFilename');
+const previewDims      = document.getElementById('previewDims');
+const clearBtn         = document.getElementById('clearBtn');
+const errorBanner      = document.getElementById('errorBanner');
+const errorText        = document.getElementById('errorText');
+const dismissError     = document.getElementById('dismissError');
+const layoutSelect     = document.getElementById('layoutSelect');
+const colsInput        = document.getElementById('colsInput');
+const rowsInput        = document.getElementById('rowsInput');
+const generateBtn      = document.getElementById('generateBtn');
+const loadingOverlay   = document.getElementById('loadingOverlay');
+const loadingText      = document.getElementById('loadingText');
+const resultsSection   = document.getElementById('resultsSection');
+const gridPreview      = document.getElementById('gridPreview');
+const mosaicPreview    = document.getElementById('mosaicPreview');
+const downloadGrid     = document.getElementById('downloadGrid');
+const downloadMosaic   = document.getElementById('downloadMosaic');
+const colorPalette     = document.getElementById('colorPalette');
+const paletteCard      = document.getElementById('paletteCard');
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ const colorPalette    = document.getElementById('colorPalette');
 Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
   const opt = document.createElement('option');
   opt.value = key;
-  opt.textContent = layout.label;
+  opt.textContent = `${layout.label} (${layout.cols}×${layout.rows})`;
   layoutSelect.appendChild(opt);
 });
 
@@ -163,7 +164,7 @@ function clampGridValue(val, min, max) {
 }
 
 function updatePixelInfo() {
-  pixelInfo.textContent = `${customCols} × ${customRows} cells`;
+  // no-op: col/row values are always visible in the inputs
 }
 
 function onGridInputChange(input, isCol) {
@@ -180,8 +181,6 @@ colsInput.addEventListener('input',  () => onGridInputChange(colsInput, true));
 colsInput.addEventListener('change', () => onGridInputChange(colsInput, true));
 rowsInput.addEventListener('input',  () => onGridInputChange(rowsInput, false));
 rowsInput.addEventListener('change', () => onGridInputChange(rowsInput, false));
-
-updatePixelInfo();
 
 // ─── Event Wiring ─────────────────────────────────────────────────────────────
 
@@ -261,14 +260,15 @@ function handleFile(file) {
       currentBaseName = file.name.replace(/\.[^.]+$/, '') || 'image';
 
       previewImg.src = e.target.result;
-      imageInfo.innerHTML =
-        `<strong>File:</strong> ${escHtml(file.name)}<br>` +
-        `<strong>Size:</strong> ${(file.size / 1024).toFixed(0)} KB<br>` +
-        `<strong>Dimensions:</strong> ${img.naturalWidth} × ${img.naturalHeight} px`;
+      previewFilename.textContent =
+        `${escHtml(file.name)}  ·  ${(file.size / 1024).toFixed(0)} KB`;
+      previewDims.textContent =
+        `${img.naturalWidth} × ${img.naturalHeight} px`;
 
-      previewSection.style.display = 'block';
-      generateBtn.disabled         = false;
+      previewPanel.style.display = 'flex';
+      generateBtn.disabled       = false;
       resultsSection.style.display = 'none';
+      paletteCard.style.display    = 'none';
     };
     img.src = e.target.result;
   };
@@ -317,7 +317,8 @@ async function runPipeline() {
 
     renderPaletteUI(cellIndices);
 
-    resultsSection.style.display = 'block';
+    paletteCard.style.display    = 'block';
+    resultsSection.style.display = 'grid';
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     showError('Processing failed: ' + err.message);
@@ -682,39 +683,27 @@ function appendLegend(svg, offsetY, svgW, itemH) {
 
 // ─── Palette UI ───────────────────────────────────────────────────────────────
 
+function isLightColor({ r, g, b }) {
+  // perceived luminance — use dark text on light swatches
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160;
+}
+
 function renderPaletteUI(cellIndices) {
   colorPalette.innerHTML = '';
 
-  // Count usage per palette entry
   const usage = new Array(PALETTE.length).fill(0);
   cellIndices.forEach(i => usage[i]++);
-
-  const title = document.createElement('h3');
-  title.textContent = `Color Palette (${PALETTE.length} colors)`;
-  colorPalette.appendChild(title);
-
-  const wrap = document.createElement('div');
-  wrap.className = 'palette-swatches';
 
   PALETTE.forEach((color, i) => {
     const item = document.createElement('div');
     item.className = 'swatch-item';
-
-    const box = document.createElement('div');
-    box.className = 'swatch-box';
-    box.style.background = rgbStr(color);
-    box.style.border = i === 24 ? '1px dashed #aaa' : '1px solid rgba(0,0,0,0.12)';
-    box.title = `${color.name} — ${usage[i]} cells`;
-
-    const label = document.createElement('span');
-    label.textContent = `${i + 1}`;
-
-    item.appendChild(box);
-    item.appendChild(label);
-    wrap.appendChild(item);
+    item.style.background = rgbStr(color);
+    item.dataset.light = isLightColor(color) ? 'true' : 'false';
+    if (i === 24) item.style.border = '1.5px dashed #999'; // white/no-paint
+    item.title = `${i + 1}. ${color.name} — ${usage[i]} cells`;
+    item.textContent = String(i + 1).padStart(2, '0');
+    colorPalette.appendChild(item);
   });
-
-  colorPalette.appendChild(wrap);
 }
 
 // ─── SVG Helpers ─────────────────────────────────────────────────────────────
@@ -789,10 +778,13 @@ function clearAll() {
 
   fileInput.value = '';
   previewImg.src  = '';
+  previewFilename.textContent = '';
+  previewDims.textContent     = '';
 
-  previewSection.style.display  = 'none';
-  resultsSection.style.display  = 'none';
-  generateBtn.disabled          = true;
+  previewPanel.style.display   = 'none';
+  resultsSection.style.display = 'none';
+  paletteCard.style.display    = 'none';
+  generateBtn.disabled         = true;
 
   hideError();
 }

@@ -3,78 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paint by Numbers Generator</title>
+  <title>Paint-by-Numbers Generator</title>
   <link rel="stylesheet" href="asset/style.css" />
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🎨 Paint by Numbers Generator</h1>
-      <p class="subtitle">Upload an image and select a grid layout to generate a paint-by-numbers page</p>
-    </header>
 
-    <section class="upload-section">
-      <div class="drop-zone" id="dropZone">
-        <div class="drop-zone-content">
-          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <p class="drop-text">Drag &amp; drop an image here, or</p>
-          <label class="file-label" for="fileInput">Browse files</label>
+  <!-- Top header bar -->
+  <header class="topbar">
+    <h1 class="topbar-title">Paint-by-Numbers Generator</h1>
+    <p class="topbar-sub">Upload a photo, pick a grid, download printable SVGs.</p>
+  </header>
+
+  <main class="page">
+
+    <!-- Upload row -->
+    <section class="card upload-card">
+      <div class="upload-cols">
+
+        <!-- Left: drop zone -->
+        <div class="drop-zone" id="dropZone">
+          <p class="drop-main">Drop an image here</p>
+          <p class="drop-hint">JPG or PNG · max 20 MB · min 40×60 px</p>
+          <label class="btn btn-browse" for="fileInput">Browse files</label>
           <input type="file" id="fileInput" accept="image/jpeg,image/png" hidden />
-          <p class="file-hint">JPG or PNG, max 20 MB, min 40×60 px</p>
         </div>
+
+        <!-- Right: preview (hidden until file loaded) -->
+        <div class="preview-panel" id="previewPanel" style="display:none;">
+          <div class="preview-inner">
+            <img id="previewImg" alt="Preview" />
+            <div class="preview-meta">
+              <span class="preview-filename" id="previewFilename"></span>
+              <span class="preview-dims" id="previewDims"></span>
+              <button class="btn-clear" id="clearBtn">Clear</button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <div class="preview-section" id="previewSection" style="display:none;">
-        <div class="preview-header">
-          <h2>Source Image</h2>
-          <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
-        </div>
-        <div class="preview-wrap">
-          <img id="previewImg" alt="Preview" />
-          <div class="image-info" id="imageInfo"></div>
-        </div>
-      </div>
-
+      <!-- Error -->
       <div class="error-banner" id="errorBanner" style="display:none;">
         <span id="errorText"></span>
         <button class="dismiss-btn" id="dismissError">✕</button>
       </div>
+    </section>
 
-      <!-- Layout selector -->
-      <div class="layout-row">
-        <label class="layout-label" for="layoutSelect">Grid Layout</label>
-        <select id="layoutSelect" class="layout-select">
-          <!-- Options populated by app.js -->
-        </select>
-      </div>
-
-      <!-- Grid size controls -->
-      <div class="layout-row grid-size-row">
-        <label class="layout-label">Grid Size</label>
-        <div class="grid-size-inputs">
-          <div class="grid-size-field">
-            <label class="grid-size-label" for="colsInput">Columns</label>
-            <input type="number" id="colsInput" class="grid-size-input" min="4" max="200" value="40" />
-          </div>
-          <span class="grid-size-sep">×</span>
-          <div class="grid-size-field">
-            <label class="grid-size-label" for="rowsInput">Rows</label>
-            <input type="number" id="rowsInput" class="grid-size-input" min="4" max="200" value="60" />
+    <!-- Controls bar -->
+    <section class="card controls-card">
+      <div class="controls-row">
+        <div class="control-group">
+          <label class="control-label" for="layoutSelect">Grid layout</label>
+          <div class="select-wrap">
+            <select id="layoutSelect" class="layout-select"></select>
           </div>
         </div>
-        <span class="pixel-info" id="pixelInfo"></span>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-primary" id="generateBtn" disabled>
-          Generate Paint by Numbers
-        </button>
+        <div class="control-group">
+          <label class="control-label">Grid Size</label>
+          <div class="grid-size-inputs">
+            <div class="grid-size-field">
+              <label class="grid-size-label" for="colsInput">Cols</label>
+              <input type="number" id="colsInput" class="grid-size-input" min="4" max="200" value="40" />
+            </div>
+            <span class="grid-size-sep">×</span>
+            <div class="grid-size-field">
+              <label class="grid-size-label" for="rowsInput">Rows</label>
+              <input type="number" id="rowsInput" class="grid-size-input" min="4" max="200" value="60" />
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-generate" id="generateBtn" disabled>Generate</button>
       </div>
     </section>
 
-    <!-- Loading -->
+    <!-- Palette section (shown after generation) -->
+    <section class="card palette-card" id="paletteCard" style="display:none;">
+      <p class="section-label">PALETTE</p>
+      <div class="palette-swatches" id="colorPalette"></div>
+    </section>
+
+    <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay" style="display:none;">
       <div class="loading-card">
         <div class="spinner"></div>
@@ -83,28 +91,27 @@
     </div>
 
     <!-- Results -->
-    <section class="results-section" id="resultsSection" style="display:none;">
-      <h2>Results</h2>
+    <section class="results-row" id="resultsSection" style="display:none;">
 
-      <div class="result-grid">
-        <div class="result-card">
-          <h3>Paint-by-Numbers Grid</h3>
-          <p class="result-desc">Numbered cells with color legend</p>
-          <div class="canvas-wrap" id="gridPreview"></div>
-          <button class="btn btn-download" id="downloadGrid">⬇ Download Grid SVG</button>
+      <div class="result-card">
+        <div class="result-card-header">
+          <span class="result-card-title">Paint-by-Numbers Grid</span>
+          <button class="btn btn-download" id="downloadGrid">Download SVG</button>
         </div>
-
-        <div class="result-card">
-          <h3>Mosaic Preview</h3>
-          <p class="result-desc">Solid color blocks (no numbers)</p>
-          <div class="canvas-wrap" id="mosaicPreview"></div>
-          <button class="btn btn-download" id="downloadMosaic">⬇ Download Mosaic SVG</button>
-        </div>
+        <div class="canvas-wrap" id="gridPreview"></div>
       </div>
 
-      <div class="color-palette" id="colorPalette"></div>
+      <div class="result-card">
+        <div class="result-card-header">
+          <span class="result-card-title">Mosaic Preview</span>
+          <button class="btn btn-download" id="downloadMosaic">Download SVG</button>
+        </div>
+        <div class="canvas-wrap" id="mosaicPreview"></div>
+      </div>
+
     </section>
-  </div>
+
+  </main>
 
   <script src="asset/app.js"></script>
 </body>
