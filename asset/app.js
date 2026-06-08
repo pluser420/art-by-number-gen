@@ -519,11 +519,12 @@ function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
 /** Sample center of triangle cell */
 function sampleTriangle(ctx, imgW, imgH, col, row, cols, rows) {
   const isUp = col % 2 === 0;
-  // Sample the centroid of the triangle
-  const cx = ((col + 0.5) / cols) * imgW;
+  // For down▽, sample from shifted position (left by cW/2)
+  const baseX = isUp ? col : col - 0.5;
+  const cx = ((baseX + 0.5) / cols) * imgW;
   const cy = isUp
-    ? ((row + 0.67) / rows) * imgH   // up triangle centroid
-    : ((row + 0.33) / rows) * imgH;  // down triangle centroid
+    ? ((row + 0.67) / rows) * imgH
+    : ((row + 0.33) / rows) * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
@@ -710,6 +711,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
 }
 
 /** Triangle cell — fill only, 1px oversized to seal sub-pixel gaps.
+ *  Up▲ at even cols, Down▽ at odd cols shifted left by cW/2 for proper interlocking.
  *  All grid lines drawn in drawTriangleGridLines() post-pass.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
@@ -717,12 +719,18 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const midX = x0 + cW / 2;
   const o    = 1;
 
-  const pts = isUp
-    ? `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`
-    : `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
+  let pts;
+  if (isUp) {
+    const midX = x0 + cW / 2;
+    pts = `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`;
+  } else {
+    // Shift down▽ left by cW/2 so its left edge aligns with the up▲ apex
+    const sx   = x0 - cW / 2;
+    const midX = sx + cW / 2;
+    pts = `${sx - o},${y0 - o} ${sx + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
+  }
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -731,9 +739,9 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    const cx = midX;
-    const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    const numCx = isUp ? x0 + cW / 2 : x0 - cW / 2 + cW / 2;
+    const numCy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
+    svg.appendChild(text(numCx, numCy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
 
@@ -758,15 +766,18 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
     for (let col = 0; col < cols; col++) {
       const x0   = col * cW;
       const y0   = row * cH;
-      const midX = x0 + cW / 2;
       const isUp = col % 2 === 0;
 
       if (isUp) {
+        const midX = x0 + cW / 2;
         line(x0,   y0 + cH, midX,    y0);
         line(midX, y0,      x0 + cW, y0 + cH);
       } else {
-        line(x0,   y0,      midX,    y0 + cH);
-        line(midX, y0 + cH, x0 + cW, y0);
+        // Shifted left by cW/2
+        const sx   = x0 - cW / 2;
+        const midX = sx + cW / 2;
+        line(sx,   y0,      midX,    y0 + cH);
+        line(midX, y0 + cH, sx + cW, y0);
       }
     }
   }
