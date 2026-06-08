@@ -507,10 +507,16 @@ function sampleSquare(ctx, imgW, imgH, col, row, cols, rows) {
   return averageRegion(ctx, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
 }
 
-/** Sample center of hexagon cell — simple grid, no offset */
+/** Sample center of hexagon cell — pointy-top regular hex tiling */
 function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
-  const cx = ((col + 0.5) / cols) * imgW;
-  const cy = ((row + 0.5) / rows) * imgH;
+  const s      = 1 / Math.sqrt(3); // normalized
+  const hStep  = 1;
+  const vStep  = s * 1.5;
+  const offset = col % 2 === 1 ? s * 0.75 : 0;
+  const totalW = cols * hStep + 0.5;
+  const totalH = rows * vStep + s * 1.75;
+  const cx = (col * hStep + 0.5) / totalW * imgW;
+  const cy = (row * vStep + s + offset) / totalH * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
@@ -650,7 +656,8 @@ function buildMosaicSVG(cellIndices, layout) {
 function computeGridWidth(layout) {
   const { cols, cellW } = layout;
   if (layout.label === 'Hexagons') {
-    return Math.round(cols * cellW);
+    // pointy-top: width = cols * cW + cW/2 (odd col offset adds half width)
+    return Math.round(cols * cellW + cellW / 2);
   }
   if (layout.label === 'Triangles') {
     const lastCol = cols - 1;
@@ -668,7 +675,9 @@ function computeGridWidth(layout) {
 function computeGridHeight(layout) {
   const { rows, cellH } = layout;
   if (layout.label === 'Hexagons') {
-    return Math.round(rows * cellH);
+    // pointy-top: s = cW/√3, vStep = s*1.5, total = rows*vStep + s*0.75 + s
+    const s = cellW / Math.sqrt(3);
+    return Math.round(layout.rows * s * 1.5 + s * 1.75);
   }
   if (layout.label === 'Diamonds') {
     // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
@@ -718,17 +727,25 @@ function drawRectCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
  *    vertical step   = cH * 0.75   (rows overlap by 25% — this removes the gaps)
  *    odd-col offset  = cH * 0.375  (half the vertical step)
  */
+/** Regular hexagon cell — pointy-top tiling, gapless.
+ *  s = circumradius. Width = s*√3, Height = s*2
+ *  Horizontal step = s*√3, Vertical step = s*1.5
+ *  Odd columns offset down by s*0.75
+ */
 function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const cx = col * cW + cW / 2;
-  const cy = row * cH + cH / 2;
-  // Expand by 1px to fully seal gaps between adjacent hexagons
-  const rx = cW / 2 + 1;
-  const ry = cH / 2 + 1;
+  // Derive circumradius from cell dimensions
+  const s   = cW / Math.sqrt(3); // so width = s*√3 = cW
+  const hStep = cW;              // horizontal step = s*√3
+  const vStep = s * 1.5;         // vertical step
+  const offset = col % 2 === 1 ? s * 0.75 : 0; // odd col offset
+
+  const cx = col * hStep + cW / 2;
+  const cy = row * vStep + s + offset;
 
   const pts = [];
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i;
-    pts.push(`${(cx + rx * Math.cos(angle)).toFixed(2)},${(cy + ry * Math.sin(angle)).toFixed(2)}`);
+    const angle = (Math.PI / 6) + (Math.PI / 3) * i; // pointy-top: start at 30°
+    pts.push(`${(cx + s * Math.cos(angle)).toFixed(2)},${(cy + s * Math.sin(angle)).toFixed(2)}`);
   }
 
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
@@ -740,7 +757,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(s * 0.5))));
   }
 }
 
