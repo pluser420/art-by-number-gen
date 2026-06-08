@@ -154,10 +154,22 @@ function buildPaletteSelector() {
     item.dataset.light = isLightColor(color) ? 'true' : 'false';
     item.dataset.idx = i;
     if (i === 24) item.style.outline = '1.5px dashed #999';
-    item.title = `${i + 1}. ${color.name}`;
+    item.title = `${i + 1}. ${color.name} — click to edit, right-click to toggle`;
     item.textContent = String(i + 1).padStart(2, '0');
     if (!enabledColors.has(i)) item.classList.add('swatch-disabled');
-    item.addEventListener('click', () => togglePaletteColor(i, item));
+
+    // Left-click: open color editor
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openColorEditor(i, item);
+    });
+
+    // Right-click: toggle enable/disable
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      togglePaletteColor(i, item);
+    });
+
     paletteSelector.appendChild(item);
   });
   updatePaletteCount();
@@ -200,7 +212,164 @@ deselectAllBtn.addEventListener('click', () => {
 
 buildPaletteSelector();
 
-// Populate layout selector
+// ─── Color Editor ─────────────────────────────────────────────────────────────
+
+const colorEditor        = document.getElementById('colorEditor');
+const colorEditorBackdrop = document.getElementById('colorEditorBackdrop');
+const editorColorNum     = document.getElementById('editorColorNum');
+const editorPreview      = document.getElementById('editorPreview');
+const editorColorName    = document.getElementById('editorColorName');
+const editorR            = document.getElementById('editorR');
+const editorG            = document.getElementById('editorG');
+const editorB            = document.getElementById('editorB');
+const editorHex          = document.getElementById('editorHex');
+const editorApplyBtn     = document.getElementById('editorApplyBtn');
+const editorResetBtn     = document.getElementById('editorResetBtn');
+const colorEditorClose   = document.getElementById('colorEditorClose');
+
+// Original palette values for reset
+const PALETTE_DEFAULTS = PALETTE.map(c => ({ ...c }));
+
+let editingIdx = -1; // which palette index is being edited
+
+function openColorEditor(idx, anchorEl) {
+  editingIdx = idx;
+  const color = PALETTE[idx];
+  editorColorNum.textContent  = `#${idx + 1} — ${color.name}`;
+  editorColorName.textContent = color.name;
+  editorR.value = color.r;
+  editorG.value = color.g;
+  editorB.value = color.b;
+  editorHex.value = rgbToHex(color.r, color.g, color.b);
+  updateEditorPreview();
+
+  // Position popup near the swatch
+  colorEditor.style.display = 'block';
+  colorEditorBackdrop.style.display = 'block';
+
+  const rect = anchorEl.getBoundingClientRect();
+  const popW = 240;
+  const popH = colorEditor.offsetHeight;
+  let left = rect.left + window.scrollX;
+  let top  = rect.bottom + window.scrollY + 6;
+
+  // Keep within viewport
+  if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+  if (left < 8) left = 8;
+  if (top + popH > window.scrollY + window.innerHeight - 8) {
+    top = rect.top + window.scrollY - popH - 6;
+  }
+
+  colorEditor.style.left = `${left}px`;
+  colorEditor.style.top  = `${top}px`;
+}
+
+function closeColorEditor() {
+  colorEditor.style.display = 'block'; // keep visible briefly to avoid flicker
+  colorEditor.style.display = 'none';
+  colorEditorBackdrop.style.display = 'none';
+  editingIdx = -1;
+}
+
+function updateEditorPreview() {
+  const r = clamp255(parseInt(editorR.value, 10));
+  const g = clamp255(parseInt(editorG.value, 10));
+  const b = clamp255(parseInt(editorB.value, 10));
+  editorPreview.style.background = `rgb(${r},${g},${b})`;
+  editorHex.value = rgbToHex(r, g, b);
+}
+
+function clamp255(v) {
+  return isNaN(v) ? 0 : Math.min(255, Math.max(0, Math.round(v)));
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgb(hex) {
+  const clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    return {
+      r: parseInt(clean[0] + clean[0], 16),
+      g: parseInt(clean[1] + clean[1], 16),
+      b: parseInt(clean[2] + clean[2], 16),
+    };
+  }
+  if (clean.length === 6) {
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16),
+    };
+  }
+  return null;
+}
+
+// RGB inputs → update hex + preview
+[editorR, editorG, editorB].forEach(input => {
+  input.addEventListener('input', updateEditorPreview);
+});
+
+// Hex input → update RGB + preview
+editorHex.addEventListener('input', () => {
+  const rgb = hexToRgb(editorHex.value);
+  if (rgb) {
+    editorR.value = rgb.r;
+    editorG.value = rgb.g;
+    editorB.value = rgb.b;
+    editorPreview.style.background = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+  }
+});
+
+editorApplyBtn.addEventListener('click', () => {
+  if (editingIdx < 0) return;
+  const r = clamp255(parseInt(editorR.value, 10));
+  const g = clamp255(parseInt(editorG.value, 10));
+  const b = clamp255(parseInt(editorB.value, 10));
+  PALETTE[editingIdx].r = r;
+  PALETTE[editingIdx].g = g;
+  PALETTE[editingIdx].b = b;
+
+  // Update the swatch in the selector
+  const swatchEl = paletteSelector.querySelector(`[data-idx="${editingIdx}"]`);
+  if (swatchEl) {
+    swatchEl.style.background = `rgb(${r},${g},${b})`;
+    swatchEl.dataset.light = isLightColor({ r, g, b }) ? 'true' : 'false';
+    // Mark as modified if different from default
+    const def = PALETTE_DEFAULTS[editingIdx];
+    if (r !== def.r || g !== def.g || b !== def.b) {
+      swatchEl.classList.add('swatch-modified');
+    } else {
+      swatchEl.classList.remove('swatch-modified');
+    }
+  }
+  closeColorEditor();
+});
+
+editorResetBtn.addEventListener('click', () => {
+  if (editingIdx < 0) return;
+  const def = PALETTE_DEFAULTS[editingIdx];
+  PALETTE[editingIdx].r = def.r;
+  PALETTE[editingIdx].g = def.g;
+  PALETTE[editingIdx].b = def.b;
+
+  editorR.value = def.r;
+  editorG.value = def.g;
+  editorB.value = def.b;
+  updateEditorPreview();
+
+  const swatchEl = paletteSelector.querySelector(`[data-idx="${editingIdx}"]`);
+  if (swatchEl) {
+    swatchEl.style.background = rgbStr(def);
+    swatchEl.dataset.light = isLightColor(def) ? 'true' : 'false';
+    swatchEl.classList.remove('swatch-modified');
+  }
+  closeColorEditor();
+});
+
+colorEditorClose.addEventListener('click', closeColorEditor);
+colorEditorBackdrop.addEventListener('click', closeColorEditor);
 Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
   const opt = document.createElement('option');
   opt.value = key;

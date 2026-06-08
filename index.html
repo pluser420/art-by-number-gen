@@ -88,6 +88,7 @@
         </div>
       </div>
       <div class="palette-swatches" id="paletteSelector"></div>
+      <p class="palette-hint">Left-click to edit color · Right-click to enable/disable</p>
     </section>
 
     <!-- Result palette (shown after generation) -->
@@ -128,5 +129,40 @@
   </main>
 
   <script src="asset/app.js"></script>
+
+  <!-- Color editor popup -->
+  <div class="color-editor-backdrop" id="colorEditorBackdrop" style="display:none;"></div>
+  <div class="color-editor" id="colorEditor" style="display:none;" role="dialog" aria-modal="true" aria-label="Edit color">
+    <div class="color-editor-header">
+      <span class="color-editor-title">Edit Color <span id="editorColorNum"></span></span>
+      <button class="color-editor-close" id="colorEditorClose" aria-label="Close">✕</button>
+    </div>
+    <div class="color-editor-preview" id="editorPreview"></div>
+    <div class="color-editor-name" id="editorColorName"></div>
+
+    <div class="color-editor-fields">
+      <div class="cef-group">
+        <label class="cef-label" for="editorR">R</label>
+        <input class="cef-input" type="number" id="editorR" min="0" max="255" />
+      </div>
+      <div class="cef-group">
+        <label class="cef-label" for="editorG">G</label>
+        <input class="cef-input" type="number" id="editorG" min="0" max="255" />
+      </div>
+      <div class="cef-group">
+        <label class="cef-label" for="editorB">B</label>
+        <input class="cef-input" type="number" id="editorB" min="0" max="255" />
+      </div>
+      <div class="cef-group cef-hex-group">
+        <label class="cef-label" for="editorHex">Hex</label>
+        <input class="cef-input cef-hex" type="text" id="editorHex" maxlength="7" placeholder="#rrggbb" />
+      </div>
+    </div>
+
+    <div class="color-editor-actions">
+      <button class="btn btn-editor-reset" id="editorResetBtn">Reset</button>
+      <button class="btn btn-editor-apply" id="editorApplyBtn">Apply</button>
+    </div>
+  </div>
 </body>
 </html>
