@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paint by Numbers Generator</title>
+  <link rel="stylesheet" href="asset/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎨 Paint by Numbers Generator</h1>
+      <p class="subtitle">Upload an image and select a grid layout to generate a paint-by-numbers page</p>
+    </header>
+
+    <section class="upload-section">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-content">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+          <p class="drop-text">Drag &amp; drop an image here, or</p>
+          <label class="file-label" for="fileInput">Browse files</label>
+          <input type="file" id="fileInput" accept="image/jpeg,image/png" hidden />
+          <p class="file-hint">JPG or PNG, max 20 MB, min 40×60 px</p>
+        </div>
+      </div>
+
+      <div class="preview-section" id="previewSection" style="display:none;">
+        <div class="preview-header">
+          <h2>Source Image</h2>
+          <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
+        </div>
+        <div class="preview-wrap">
+          <img id="previewImg" alt="Preview" />
+          <div class="image-info" id="imageInfo"></div>
+        </div>
+      </div>
+
+      <div class="error-banner" id="errorBanner" style="display:none;">
+        <span id="errorText"></span>
+        <button class="dismiss-btn" id="dismissError">✕</button>
+      </div>
+
+      <!-- Layout selector -->
+      <div class="layout-row">
+        <label class="layout-label" for="layoutSelect">Grid Layout</label>
+        <select id="layoutSelect" class="layout-select">
+          <!-- Options populated by app.js -->
+        </select>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="generateBtn" disabled>
+          Generate Paint by Numbers
+        </button>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p class="loading-text" id="loadingText">Processing image…</p>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <section class="results-section" id="resultsSection" style="display:none;">
+      <h2>Results</h2>
+
+      <div class="result-grid">
+        <div class="result-card">
+          <h3>Paint-by-Numbers Grid</h3>
+          <p class="result-desc">Numbered cells with color legend</p>
+          <div class="canvas-wrap" id="gridPreview"></div>
+          <button class="btn btn-download" id="downloadGrid">⬇ Download Grid SVG</button>
+        </div>
+
+        <div class="result-card">
+          <h3>Mosaic Preview</h3>
+          <p class="result-desc">Solid color blocks (no numbers)</p>
+          <div class="canvas-wrap" id="mosaicPreview"></div>
+          <button class="btn btn-download" id="downloadMosaic">⬇ Download Mosaic SVG</button>
+        </div>
+      </div>
+
+      <div class="color-palette" id="colorPalette"></div>
+    </section>
+  </div>
+
+  <script src="asset/app.js"></script>
+</body>
+</html>
