@@ -38,6 +38,7 @@ body {
   background: var(--topbar-bg);
   color: #fff;
   padding: 14px 24px 12px;
+  text-align: center;
 }
 
 .topbar-title {
