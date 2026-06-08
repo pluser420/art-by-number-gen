@@ -843,13 +843,23 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   }
 }
 
-/** Diamond cell */
+/** Diamond cell — user-defined formula.
+ *  Even col: cx = col*cW + cW/2,     cy = row*cH + cH/2
+ *  Odd col:  cx = (col+1)*cW + cW/2, cy = row*cH + cH/2  (but shift row up by cH/2)
+ */
 function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const cx   = col * cW + cW / 2;
-  const cy   = row * cH + cH / 2;
+  let cx, cy;
+  if (col % 2 === 0) {
+    cx = col * cW + cW / 2;
+    cy = row * cH + cH / 2;
+  } else {
+    cx = (col + 1) * cW + cW / 2;
+    cy = row * cH + cH / 2;
+  }
+
+  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const h    = BORDER_W / 2;
   const pts  = `${cx},${cy - cH / 2 + h} ${cx + cW / 2 - h},${cy} ${cx},${cy + cH / 2 - h} ${cx - cW / 2 + h},${cy}`;
-  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
