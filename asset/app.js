@@ -924,19 +924,18 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
 
   // Diagonal edges per triangle per row
   for (let row = 0; row < rows; row++) {
-    const yT = row * cH;
-    const yB = (row + 1) * cH;
+    const yT     = row * cH;
+    const yB     = (row + 1) * cH;
+    const rowOff = row % 2 === 1 ? -cW : 0;
     for (let col = 0; col < cols; col++) {
-      const xL   = col * (cW / 2);
+      const xL   = col * (cW / 2) + rowOff;
       const xMid = xL + cW / 2;
       const xR   = xL + cW;
       const isUp = col % 2 === 0;
       if (isUp) {
-        // up▲: left-base → apex-top, apex-top → right-base
         line(xL, yB, xMid, yT);
         line(xMid, yT, xR, yB);
       } else {
-        // down▽: left-top → apex-bottom, apex-bottom → right-top
         line(xL, yT, xMid, yB);
         line(xMid, yB, xR, yT);
       }
@@ -1022,18 +1021,19 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
  *    down▽ (i odd): base at top (y), apex at bottom-center (x + cW/2, y+cH)
  */
 function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const isUp = col % 2 === 0;
-  const xL   = col * (cW / 2);
-  const xR   = xL + cW;
-  const xMid = xL + cW / 2;
-  const yT   = row * cH;
-  const yB   = (row + 1) * cH;
-  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o    = 0.3;
+  const isUp   = col % 2 === 0;
+  const rowOff = row % 2 === 1 ? -cW : 0;  // odd rows shift left by cW
+  const xL     = col * (cW / 2) + rowOff;
+  const xR     = xL + cW;
+  const xMid   = xL + cW / 2;
+  const yT     = row * cH;
+  const yB     = (row + 1) * cH;
+  const fill   = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const o      = 0.3;
 
   const pts = isUp
-    ? `${xL - o},${yB + o} ${xMid},${yT - o} ${xR + o},${yB + o}`   // up▲
-    : `${xL - o},${yT - o} ${xR + o},${yT - o} ${xMid},${yB + o}`;  // down▽
+    ? `${xL - o},${yB + o} ${xMid},${yT - o} ${xR + o},${yB + o}`
+    : `${xL - o},${yT - o} ${xR + o},${yT - o} ${xMid},${yB + o}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -1049,11 +1049,13 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
 }
 
 function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
-  // Each triangle steps by cW/2; total width = cols*(cW/2) + cW/2 = (cols+1)*cW/2
-  // x center of triangle col = (col * (cW/2) + cW/2) normalized = (col + 1) / (cols + 1)
-  const isUp = col % 2 === 0;
-  const cx = ((col + 1) / (cols + 1)) * imgW;
-  const cy = isUp ? ((row + 0.67) / rows) * imgH : ((row + 0.33) / rows) * imgH;
+  const isUp   = col % 2 === 0;
+  const rowOff = row % 2 === 1 ? -1 : 0;  // normalized: odd rows shift left by one base unit
+  // x center: col*(0.5/cols) + rowOff*(1/cols) + 0.5/cols (mid of triangle)
+  const totalW = cols * 0.5 + 0.5; // in base units
+  const xUnit  = col * 0.5 + 0.5 + rowOff;  // center x in base units
+  const cx     = (xUnit / totalW) * imgW;
+  const cy     = isUp ? ((row + 0.67) / rows) * imgH : ((row + 0.33) / rows) * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
