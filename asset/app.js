@@ -507,16 +507,14 @@ function sampleSquare(ctx, imgW, imgH, col, row, cols, rows) {
   return averageRegion(ctx, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
 }
 
-/** Sample center of hexagon cell — pointy-top regular hex tiling */
+/** Sample center of hexagon cell — flat-top honeycomb */
 function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
-  const s      = 1 / Math.sqrt(3); // normalized
+  const s      = 1 / Math.sqrt(3);
   const hStep  = 1;
   const vStep  = s * 1.5;
-  const offset = col % 2 === 1 ? s * 0.75 : 0;
-  const totalW = cols * hStep + 0.5;
-  const totalH = rows * vStep + s * 1.75;
-  const cx = (col * hStep + 0.5) / totalW * imgW;
-  const cy = (row * vStep + s + offset) / totalH * imgH;
+  const colOff = col % 2 === 1 ? s * 0.75 : 0;
+  const cx     = (col * hStep + 0.5) / (cols + 0.5) * imgW;
+  const cy     = (row * vStep + s + colOff) / ((rows - 1) * vStep + s * 2.75) * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
@@ -675,8 +673,9 @@ function computeGridWidth(layout) {
 function computeGridHeight(layout) {
   const { rows, cellH } = layout;
   if (layout.label === 'Hexagons') {
-    const s = cellH / Math.sqrt(3);
-    return Math.round(rows * s * 1.5 + s * 1.75);
+    // flat-top: s = cW/√3, vStep = s*1.5, max cy = (rows-1)*vStep + s + 0.75*s + s
+    const s = layout.cellW / Math.sqrt(3);
+    return Math.round((rows - 1) * s * 1.5 + s * 2.75);
   }
   if (layout.label === 'Diamonds') {
     // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
@@ -726,24 +725,29 @@ function drawRectCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
  *    vertical step   = cH * 0.75   (rows overlap by 25% — this removes the gaps)
  *    odd-col offset  = cH * 0.375  (half the vertical step)
  */
-/** Regular hexagon cell — pointy-top tiling, gapless.
- *  s = circumradius. Width = s*√3, Height = s*2
- *  Horizontal step = s*√3, Vertical step = s*1.5
- *  Odd columns offset down by s*0.75
+/** Regular flat-top honeycomb hexagon.
+ *  For a regular hex with circumradius s:
+ *    width  = s * √3  (tip to tip horizontally)
+ *    height = s * 2   (tip to tip vertically)
+ *  Tiling:
+ *    horizontal step = s * √3        (columns touch side to side)
+ *    vertical step   = s * 1.5       (rows overlap by s*0.5)
+ *    odd col offset  = s * 0.75 down
  */
 function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  // Derive circumradius from cell dimensions
-  const s   = cW / Math.sqrt(3); // so width = s*√3 = cW
-  const hStep = cW;              // horizontal step = s*√3
-  const vStep = s * 1.5;         // vertical step
-  const offset = col % 2 === 1 ? s * 0.75 : 0; // odd col offset
+  // s = circumradius. We use cW as the flat-to-flat width = s*√3, so s = cW/√3
+  const s      = cW / Math.sqrt(3);
+  const hStep  = cW;                              // = s*√3
+  const vStep  = s * 1.5;                         // vertical step between row centers
+  const colOff = col % 2 === 1 ? s * 0.75 : 0;   // odd col shifts down
 
   const cx = col * hStep + cW / 2;
-  const cy = row * vStep + s + offset;
+  const cy = row * vStep + s + colOff;
 
+  // Flat-top: first point at 0° (right), then every 60°
   const pts = [];
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 6) + (Math.PI / 3) * i; // pointy-top: start at 30°
+    const angle = (Math.PI / 3) * i; // flat-top starts at 0°
     pts.push(`${(cx + s * Math.cos(angle)).toFixed(2)},${(cy + s * Math.sin(angle)).toFixed(2)}`);
   }
 
@@ -756,7 +760,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(s * 0.5))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(s * 0.6))));
   }
 }
 
