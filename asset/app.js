@@ -518,8 +518,12 @@ function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
 
 /** Sample center of triangle cell */
 function sampleTriangle(ctx, imgW, imgH, col, row, cols, rows) {
+  const isUp = col % 2 === 0;
+  // Sample the centroid of the triangle
   const cx = ((col + 0.5) / cols) * imgW;
-  const cy = ((row + 0.5) / rows) * imgH;
+  const cy = isUp
+    ? ((row + 0.67) / rows) * imgH   // up triangle centroid
+    : ((row + 0.33) / rows) * imgH;  // down triangle centroid
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
@@ -694,17 +698,22 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — alternating up/down triangles per column */
+/** Triangle cell — gapless tiling.
+ *  Each row has alternating up▲ (even col) and down▽ (odd col) triangles.
+ *  cellW = base width, cellH = height of triangle.
+ *  Up triangle:   bottom-left, top-center, bottom-right
+ *  Down triangle: top-left, top-right, bottom-center
+ *  Adjacent triangles share edges exactly — no gaps.
+ */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x    = col * cW;
   const y    = row * cH;
   const isUp = col % 2 === 0;
-  const h    = BORDER_W / 2;
 
-  // Inset points slightly so shared edges don't double up
+  // No inset — polygons share edges exactly at stroke center
   const pts = isUp
-    ? `${x + h},${y + cH - h} ${x + cW / 2},${y + h} ${x + cW - h},${y + cH - h}`
-    : `${x + h},${y + h} ${x + cW - h},${y + h} ${x + cW / 2},${y + cH - h}`;
+    ? `${x},${y + cH} ${x + cW / 2},${y} ${x + cW},${y + cH}`
+    : `${x},${y} ${x + cW},${y} ${x + cW / 2},${y + cH}`;
 
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -712,11 +721,12 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   poly.setAttribute('fill', fill);
   poly.setAttribute('stroke', BORDER_COLOR);
   poly.setAttribute('stroke-width', BORDER_W);
+  poly.setAttribute('stroke-linejoin', 'miter');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
     const cx = x + cW / 2;
-    const cy = isUp ? y + cH * 0.65 : y + cH * 0.35;
+    const cy = isUp ? y + cH * 0.65 : y + cH * 0.38;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
