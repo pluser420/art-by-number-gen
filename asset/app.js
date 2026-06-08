@@ -675,9 +675,8 @@ function computeGridWidth(layout) {
 function computeGridHeight(layout) {
   const { rows, cellH } = layout;
   if (layout.label === 'Hexagons') {
-    // pointy-top: s = cW/√3, vStep = s*1.5, total = rows*vStep + s*0.75 + s
-    const s = cellW / Math.sqrt(3);
-    return Math.round(layout.rows * s * 1.5 + s * 1.75);
+    const s = cellH / Math.sqrt(3);
+    return Math.round(rows * s * 1.5 + s * 1.75);
   }
   if (layout.label === 'Diamonds') {
     // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
