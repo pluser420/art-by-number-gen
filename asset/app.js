@@ -699,34 +699,35 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
 }
 
 /** Triangle cell — gapless tiling.
- *  Each row has alternating up▲ (even col) and down▽ (odd col) triangles.
- *  cellW = base width, cellH = height of triangle.
- *  Up triangle:   bottom-left, top-center, bottom-right
- *  Down triangle: top-left, top-right, bottom-center
- *  Adjacent triangles share edges exactly — no gaps.
+ *  Even col = up▲, odd col = down▽.
+ *  Polygons share exact edge coordinates. Stroke is drawn ON the edge (centered).
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const x    = col * cW;
-  const y    = row * cH;
+  const x0   = col * cW;
+  const y0   = row * cH;
+  const x1   = x0 + cW;
+  const y1   = y0 + cH;
+  const xMid = x0 + cW / 2;
+  const yMid = y0 + cH / 2;
   const isUp = col % 2 === 0;
 
-  // No inset — polygons share edges exactly at stroke center
+  // Exact shared coordinates — no inset, stroke centered on shared edge
   const pts = isUp
-    ? `${x},${y + cH} ${x + cW / 2},${y} ${x + cW},${y + cH}`
-    : `${x},${y} ${x + cW},${y} ${x + cW / 2},${y + cH}`;
+    ? `${x0},${y1} ${xMid},${y0} ${x1},${y1}`   // up: BL, TC, BR
+    : `${x0},${y0} ${x1},${y0} ${xMid},${y1}`;  // down: TL, TR, BC
 
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
   poly.setAttribute('stroke', BORDER_COLOR);
-  poly.setAttribute('stroke-width', BORDER_W);
+  poly.setAttribute('stroke-width', '0.5');
   poly.setAttribute('stroke-linejoin', 'miter');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    const cx = x + cW / 2;
-    const cy = isUp ? y + cH * 0.65 : y + cH * 0.38;
+    const cx = xMid;
+    const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
