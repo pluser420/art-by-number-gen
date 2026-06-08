@@ -136,80 +136,8 @@ const downloadGrid     = document.getElementById('downloadGrid');
 const downloadMosaic   = document.getElementById('downloadMosaic');
 const colorPalette     = document.getElementById('colorPalette');
 const paletteCard      = document.getElementById('paletteCard');
-const paletteSelector  = document.getElementById('paletteSelector');
-const paletteCount     = document.getElementById('paletteCount');
-const selectAllBtn     = document.getElementById('selectAllBtn');
-const deselectAllBtn   = document.getElementById('deselectAllBtn');
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-
-// Build palette selector swatches
-function buildPaletteSelector() {
-  paletteSelector.innerHTML = '';
-  PALETTE.forEach((color, i) => {
-    const item = document.createElement('div');
-    item.className = 'swatch-item swatch-selectable';
-    item.style.background = rgbStr(color);
-    item.dataset.light = isLightColor(color) ? 'true' : 'false';
-    item.dataset.idx = i;
-    if (i === 0) item.style.outline = '1.5px dashed #999'; // white = index 0
-    item.title = `${i === 0 ? 0 : i}. ${color.name} — click to edit, right-click to toggle`;
-    item.textContent = i === 0 ? '0' : String(i).padStart(2, '0');
-    if (!enabledColors.has(i)) item.classList.add('swatch-disabled');
-
-    // Left-click: open color editor
-    item.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openColorEditor(i, item);
-    });
-
-    // Right-click: toggle enable/disable
-    item.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      togglePaletteColor(i, item);
-    });
-
-    paletteSelector.appendChild(item);
-  });
-  updatePaletteCount();
-}
-
-function togglePaletteColor(idx, el) {
-  if (enabledColors.has(idx)) {
-    // Keep at least 1 color enabled
-    if (enabledColors.size <= 1) return;
-    enabledColors.delete(idx);
-    el.classList.add('swatch-disabled');
-  } else {
-    enabledColors.add(idx);
-    el.classList.remove('swatch-disabled');
-  }
-  updatePaletteCount();
-}
-
-function updatePaletteCount() {
-  paletteCount.textContent = `${enabledColors.size} / ${PALETTE.length}`;
-}
-
-selectAllBtn.addEventListener('click', () => {
-  PALETTE.forEach((_, i) => enabledColors.add(i));
-  paletteSelector.querySelectorAll('.swatch-selectable').forEach(el => el.classList.remove('swatch-disabled'));
-  updatePaletteCount();
-});
-
-deselectAllBtn.addEventListener('click', () => {
-  // Keep only color index 0 (white/blank) as a fallback
-  enabledColors.clear();
-  enabledColors.add(0);
-  paletteSelector.querySelectorAll('.swatch-selectable').forEach(el => {
-    const idx = parseInt(el.dataset.idx, 10);
-    if (idx !== 0) el.classList.add('swatch-disabled');
-    else el.classList.remove('swatch-disabled');
-  });
-  updatePaletteCount();
-});
-
-buildPaletteSelector();
 
 // ─── Color Editor ─────────────────────────────────────────────────────────────
 
@@ -329,19 +257,6 @@ editorApplyBtn.addEventListener('click', () => {
   PALETTE[editingIdx].g = g;
   PALETTE[editingIdx].b = b;
 
-  // Update the swatch in the selector
-  const swatchEl = paletteSelector.querySelector(`[data-idx="${editingIdx}"]`);
-  if (swatchEl) {
-    swatchEl.style.background = `rgb(${r},${g},${b})`;
-    swatchEl.dataset.light = isLightColor({ r, g, b }) ? 'true' : 'false';
-    // Mark as modified if different from default
-    const def = PALETTE_DEFAULTS[editingIdx];
-    if (r !== def.r || g !== def.g || b !== def.b) {
-      swatchEl.classList.add('swatch-modified');
-    } else {
-      swatchEl.classList.remove('swatch-modified');
-    }
-  }
   closeColorEditor();
 });
 
@@ -357,12 +272,6 @@ editorResetBtn.addEventListener('click', () => {
   editorB.value = def.b;
   updateEditorPreview();
 
-  const swatchEl = paletteSelector.querySelector(`[data-idx="${editingIdx}"]`);
-  if (swatchEl) {
-    swatchEl.style.background = rgbStr(def);
-    swatchEl.dataset.light = isLightColor(def) ? 'true' : 'false';
-    swatchEl.classList.remove('swatch-modified');
-  }
   closeColorEditor();
 });
 
