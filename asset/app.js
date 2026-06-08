@@ -591,6 +591,11 @@ function buildGridSVG(cellIndices, layout) {
   // Outer border — 100% black per client spec
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
+  // For triangle layout, draw grid lines as a separate pass to avoid gaps
+  if (layout.label === 'Triangles') {
+    drawTriangleGridLines(svg, cols, rows, cellW, cellH);
+  }
+
   return svg;
 }
 
@@ -610,6 +615,12 @@ function buildMosaicSVG(cellIndices, layout) {
   }
 
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
+
+  // For triangle mosaic, draw grid lines as a separate pass
+  if (layout.label === 'Triangles') {
+    drawTriangleGridLines(svg, cols, rows, cellW, cellH);
+  }
+
   return svg;
 }
 
@@ -698,27 +709,17 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — gapless tiling using background fill technique.
- *  Draw a filled background rect first, then the triangle on top.
- *  The rect fills any gaps caused by sub-pixel rendering.
+/** Triangle cell — gapless tiling.
+ *  Uses fill-only polygons (no stroke per cell).
+ *  Grid lines are drawn separately as a post-pass to avoid gap artifacts.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-
-  // Background rect with the same fill — covers any sub-pixel gaps
-  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  bg.setAttribute('x', x0);
-  bg.setAttribute('y', y0);
-  bg.setAttribute('width', cW);
-  bg.setAttribute('height', cH);
-  bg.setAttribute('fill', fill);
-  bg.setAttribute('stroke', 'none');
-  svg.appendChild(bg);
-
   const midX = x0 + cW / 2;
+
   const pts = isUp
     ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
     : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
@@ -726,8 +727,8 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', '#000000');
-  poly.setAttribute('stroke-width', '0.5');
+  poly.setAttribute('stroke', fill); // same as fill — no visible border gap
+  poly.setAttribute('stroke-width', '1');
   poly.setAttribute('stroke-linejoin', 'miter');
   svg.appendChild(poly);
 
@@ -735,6 +736,30 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
     const cx = midX;
     const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+  }
+}
+
+/** Draw triangle grid lines as a separate post-pass over the filled triangles */
+function drawTriangleGridLines(svg, cols, rows, cW, cH) {
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x0   = col * cW;
+      const y0   = row * cH;
+      const isUp = col % 2 === 0;
+      const midX = x0 + cW / 2;
+
+      const pts = isUp
+        ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
+        : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
+
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      poly.setAttribute('points', pts);
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', '#000000');
+      poly.setAttribute('stroke-width', '0.5');
+      poly.setAttribute('stroke-linejoin', 'miter');
+      svg.appendChild(poly);
+    }
   }
 }
 
