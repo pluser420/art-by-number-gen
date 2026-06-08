@@ -92,6 +92,13 @@ const GRID_LAYOUTS = {
     draw: drawDiamondCell,
     sample: sampleSquare,
   },
+  ogee: {
+    label: 'Ogee (Fish Scale)',
+    cols: 40, rows: 60,
+    cellW: 28, cellH: 20,
+    draw: drawOgeeCell,
+    sample: sampleSquare,
+  },
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -671,6 +678,10 @@ function computeGridWidth(layout) {
     // Odd rows shift right by cW/2 extra, so max right = cols*cW + cW/2
     return Math.round(cols * cellW + cellW / 2);
   }
+  if (layout.label === 'Ogee (Fish Scale)') {
+    // Odd rows offset by cW/2, so total width = cols*cW + cW/2
+    return Math.round(cols * cellW + cellW / 2);
+  }
   return cols * cellW;
 }
 
@@ -684,6 +695,10 @@ function computeGridHeight(layout) {
   if (layout.label === 'Diamonds') {
     // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
     return Math.round(0.5 * cellH * rows + cellH / 2);
+  }
+  if (layout.label === 'Ogee (Fish Scale)') {
+    // rows overlap by cH/2, total height = rows * cH/2 + cH/2
+    return Math.round(rows * cellH / 2 + cellH / 2);
   }
   return rows * cellH;
 }
@@ -864,6 +879,34 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
 
   if (withNumber && !isWhite) {
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(r * 0.65))));
+  }
+}
+
+/** Ogee / Fish-scale cell.
+ *  Each cell is an ellipse. Odd rows offset right by cW/2.
+ *  Ellipses overlap by cH/2 vertically to create the fish-scale interlocking look.
+ *  Only the bottom half of each ellipse is "owned" by that cell (top half overlaps prev row).
+ */
+function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
+  const rowOff = row % 2 === 1 ? cW / 2 : 0;
+  const cx     = col * cW + cW / 2 + rowOff;
+  const cy     = row * (cH / 2) + cH / 2; // rows overlap by cH/2
+  const rx     = cW / 2;
+  const ry     = cH / 2;
+  const fill   = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+
+  const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+  ellipse.setAttribute('cx', cx.toFixed(2));
+  ellipse.setAttribute('cy', cy.toFixed(2));
+  ellipse.setAttribute('rx', rx.toFixed(2));
+  ellipse.setAttribute('ry', ry.toFixed(2));
+  ellipse.setAttribute('fill', fill);
+  ellipse.setAttribute('stroke', BORDER_COLOR);
+  ellipse.setAttribute('stroke-width', BORDER_W);
+  svg.appendChild(ellipse);
+
+  if (withNumber && !isWhite) {
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(rx * 0.55))));
   }
 }
 
