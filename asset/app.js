@@ -700,33 +700,34 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
 
 /** Triangle cell — gapless tiling.
  *  Even col = up▲, odd col = down▽.
- *  Polygons share exact edge coordinates. Stroke is drawn ON the edge (centered).
+ *  Triangles extend 0.5px beyond bounding box to eliminate gaps caused by stroke rendering.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
   const y0   = row * cH;
-  const x1   = x0 + cW;
-  const y1   = y0 + cH;
-  const xMid = x0 + cW / 2;
-  const yMid = y0 + cH / 2;
   const isUp = col % 2 === 0;
+  const o    = 0.5; // overlap to eliminate gaps
 
-  // Exact shared coordinates — no inset, stroke centered on shared edge
+  const left  = x0 - o;
+  const right = x0 + cW + o;
+  const top   = y0 - o;
+  const bot   = y0 + cH + o;
+  const midX  = x0 + cW / 2;
+
   const pts = isUp
-    ? `${x0},${y1} ${xMid},${y0} ${x1},${y1}`   // up: BL, TC, BR
-    : `${x0},${y0} ${x1},${y0} ${xMid},${y1}`;  // down: TL, TR, BC
+    ? `${left},${bot} ${midX},${top} ${right},${bot}`
+    : `${left},${top} ${right},${top} ${midX},${bot}`;
 
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', BORDER_COLOR);
+  poly.setAttribute('stroke', '#000000');
   poly.setAttribute('stroke-width', '0.5');
-  poly.setAttribute('stroke-linejoin', 'miter');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    const cx = xMid;
+    const cx = midX;
     const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
