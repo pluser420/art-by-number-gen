@@ -95,8 +95,8 @@ const GRID_LAYOUTS = {
   },
   isotriangles: {
     label: 'Iso Triangles',
-    cols: 80, rows: 46,
-    cellW: 16, cellH: 14,  // cH = cW * √3/2 ≈ 13.86 → 14 for equilateral triangles
+    cols: 40, rows: 46,
+    cellW: 28, cellH: 12,  // pair-based: each pair = cW wide, triangle base = cW/2, cH = (cW/2)*√3/2 ≈ 12
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
@@ -441,10 +441,10 @@ async function runPipeline() {
       cellH = cellSize;
     }
 
-    // For iso triangles, preserve equilateral ratio: cellH = cellW * √3/2
+    // For iso triangles, preserve equilateral ratio: cellH = (cellW/2) * √3/2
     if (selectedLayout === 'isotriangles') {
-      cellW = Math.max(4, Math.round(baseLayout.cellW * scaleW));
-      cellH = Math.max(3, Math.round(cellW * Math.sqrt(3) / 2));
+      cellW = Math.max(6, Math.round(baseLayout.cellW * scaleW));
+      cellH = Math.max(3, Math.round((cellW / 2) * Math.sqrt(3) / 2));
     }
 
     const layout = { ...baseLayout, cols, rows, cellW, cellH };
@@ -900,9 +900,9 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
 }
 
 /** Draw iso-triangle grid lines for the 'Iso Triangles' layout.
- *  Each cell is cW wide × cH tall, positioned at col*cW, row*cH.
- *  Even cols = up▲ (apex at top-center), odd cols = down▽ (apex at bottom-center).
- *  Grid = horizontal lines every cH + two diagonals per cell using col*cW positions.
+ *  cols = number of triangle pairs. Each pair occupies cW width.
+ *  Visual triangles per row = cols * 2 (up▲ + down▽ per pair).
+ *  Horizontal lines every cH + two diagonals per pair (shared mid-point).
  */
 function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
   function line(x1, y1, x2, y2) {
@@ -922,22 +922,21 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     line(0, row * cH, totalW, row * cH);
   }
 
-  // Diagonal lines — two per cell (left edge + right edge of each triangle)
+  // Per row: diagonal lines for each pair slot
   for (let row = 0; row < rows; row++) {
-    const y0 = row * cH;
-    for (let col = 0; col < cols; col++) {
-      const x0   = col * cW;
-      const midX = x0 + cW / 2;
-      const isUp = col % 2 === 0;
-      if (isUp) {
-        // up▲: left-bottom → apex-top → right-bottom
-        line(x0,        y0 + cH, midX,       y0);
-        line(midX,      y0,      x0 + cW,    y0 + cH);
-      } else {
-        // down▽: left-top → apex-bottom → right-top
-        line(x0,        y0,      midX,       y0 + cH);
-        line(midX,      y0 + cH, x0 + cW,   y0);
-      }
+    const yT = row * cH;
+    const yB = (row + 1) * cH;
+    for (let pair = 0; pair < cols; pair++) {
+      const xL   = pair * cW;
+      const xMid = pair * cW + cW / 2;
+      const xR   = pair * cW + cW;
+      // Left diagonal (shared by up▲ left edge and down▽ left edge): top-mid → bottom-left
+      line(xMid, yT, xL, yB);
+      // Right diagonal: top-mid → bottom-right
+      line(xMid, yT, xR, yB);
+      // Vertical divider at pair boundary (left edge of pair = right edge of previous pair)
+      // Covered by the outer border; interior verticals at each xR
+      line(xR, yT, xR, yB);
     }
   }
 }
@@ -1001,22 +1000,36 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
   }
 }
 
-/** Isometric triangle cell — equilateral triangles, proper aspect ratio.
- *  Simple tiling: even col = up▲, odd col = down▽, all same row.
- *  Each cell is cW wide × cH tall (cH should be cW*√3/2 for equilateral).
- *  Uses simple column*cW positioning — no half-step offset.
+/** Isometric triangle cell — tight equilateral tiling.
+ *  cols is the number of triangle pairs per row (each pair = up▲ + down▽ sharing cW width).
+ *  So visual triangles per row = cols * 2, each triangle is cW/2 wide.
+ *  Even col index = up▲, odd col index = down▽ within each pair slot.
+ *  cH = (cW/2) * √3/2 for equilateral (half-width base).
+ *
+ *  Vertex positions for pair slot p = Math.floor(col/2):
+ *    x_left  = p * cW
+ *    x_mid   = p * cW + cW/2
+ *    x_right = p * cW + cW
+ *    y_top   = row * cH
+ *    y_bot   = (row+1) * cH
+ *
+ *  Up▲   (col even): bottom-left, apex-top-mid, bottom-right
+ *  Down▽ (col odd):  top-left, top-right, apex-bottom-mid
  */
 function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const x0   = col * cW;
-  const y0   = row * cH;
-  const isUp = col % 2 === 0;
-  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const midX = x0 + cW / 2;
-  const o    = 0.5;
+  const pair  = Math.floor(col / 2);
+  const isUp  = col % 2 === 0;
+  const xL    = pair * cW;
+  const xMid  = pair * cW + cW / 2;
+  const xR    = pair * cW + cW;
+  const yT    = row * cH;
+  const yB    = (row + 1) * cH;
+  const fill  = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const o     = 0.3;
 
   const pts = isUp
-    ? `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`
-    : `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
+    ? `${xL - o},${yB + o} ${xMid},${yT - o} ${xR + o},${yB + o}`
+    : `${xL - o},${yT - o} ${xR + o},${yT - o} ${xMid},${yB + o}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -1025,14 +1038,18 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
-    svg.appendChild(text(midX, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.22))));
+    const cx = xMid;
+    const cy = isUp ? yT + cH * 0.65 : yT + cH * 0.38;
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(3, Math.floor(cW * 0.18))));
   }
 }
 
 function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
+  // cols = number of triangle pairs; each pair is cW wide, so total visual cols = cols*2
+  const pair = Math.floor(col / 2);
   const isUp = col % 2 === 0;
-  const cx = ((col + 0.5) / cols) * imgW;
+  // x center = pair * (1/cols) + (0.5/cols) for mid of pair
+  const cx = ((pair + 0.5) / cols) * imgW;
   const cy = isUp ? ((row + 0.67) / rows) * imgH : ((row + 0.33) / rows) * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
