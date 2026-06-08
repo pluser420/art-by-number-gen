@@ -265,7 +265,6 @@ function openColorEditor(idx, anchorEl) {
 }
 
 function closeColorEditor() {
-  colorEditor.style.display = 'block'; // keep visible briefly to avoid flicker
   colorEditor.style.display = 'none';
   colorEditorBackdrop.style.display = 'none';
   editingIdx = -1;
@@ -417,12 +416,6 @@ rowsInput.addEventListener('change', () => onGridInputChange(rowsInput, false));
 
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length) handleFile(fileInput.files[0]);
-});
-
-dropZone.addEventListener('click', (e) => {
-  // The <label> already opens the file dialog natively — don't double-trigger
-  if (e.target.closest('label')) return;
-  fileInput.click();
 });
 
 dropZone.addEventListener('dragover', (e) => {
