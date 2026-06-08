@@ -110,6 +110,8 @@ let currentBaseName  = 'image';
 let selectedLayout   = 'squares';
 let customCols       = 40;
 let customRows       = 60;
+// Set of enabled palette indices (0-based). All enabled by default.
+let enabledColors    = new Set(PALETTE.map((_, i) => i));
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const fileInput        = document.getElementById('fileInput');
@@ -135,8 +137,68 @@ const downloadGrid     = document.getElementById('downloadGrid');
 const downloadMosaic   = document.getElementById('downloadMosaic');
 const colorPalette     = document.getElementById('colorPalette');
 const paletteCard      = document.getElementById('paletteCard');
+const paletteSelector  = document.getElementById('paletteSelector');
+const paletteCount     = document.getElementById('paletteCount');
+const selectAllBtn     = document.getElementById('selectAllBtn');
+const deselectAllBtn   = document.getElementById('deselectAllBtn');
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+
+// Build palette selector swatches
+function buildPaletteSelector() {
+  paletteSelector.innerHTML = '';
+  PALETTE.forEach((color, i) => {
+    const item = document.createElement('div');
+    item.className = 'swatch-item swatch-selectable';
+    item.style.background = rgbStr(color);
+    item.dataset.light = isLightColor(color) ? 'true' : 'false';
+    item.dataset.idx = i;
+    if (i === 24) item.style.outline = '1.5px dashed #999';
+    item.title = `${i + 1}. ${color.name}`;
+    item.textContent = String(i + 1).padStart(2, '0');
+    if (!enabledColors.has(i)) item.classList.add('swatch-disabled');
+    item.addEventListener('click', () => togglePaletteColor(i, item));
+    paletteSelector.appendChild(item);
+  });
+  updatePaletteCount();
+}
+
+function togglePaletteColor(idx, el) {
+  if (enabledColors.has(idx)) {
+    // Keep at least 1 color enabled
+    if (enabledColors.size <= 1) return;
+    enabledColors.delete(idx);
+    el.classList.add('swatch-disabled');
+  } else {
+    enabledColors.add(idx);
+    el.classList.remove('swatch-disabled');
+  }
+  updatePaletteCount();
+}
+
+function updatePaletteCount() {
+  paletteCount.textContent = `${enabledColors.size} / ${PALETTE.length}`;
+}
+
+selectAllBtn.addEventListener('click', () => {
+  PALETTE.forEach((_, i) => enabledColors.add(i));
+  paletteSelector.querySelectorAll('.swatch-selectable').forEach(el => el.classList.remove('swatch-disabled'));
+  updatePaletteCount();
+});
+
+deselectAllBtn.addEventListener('click', () => {
+  // Keep only color index 24 (white/no-paint) as a fallback
+  enabledColors.clear();
+  enabledColors.add(24);
+  paletteSelector.querySelectorAll('.swatch-selectable').forEach(el => {
+    const idx = parseInt(el.dataset.idx, 10);
+    if (idx !== 24) el.classList.add('swatch-disabled');
+    else el.classList.remove('swatch-disabled');
+  });
+  updatePaletteCount();
+});
+
+buildPaletteSelector();
 
 // Populate layout selector
 Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
@@ -412,6 +474,7 @@ function samplePoint(ctx, x, y) {
 function nearestPaletteIndex(r, g, b) {
   let best = 0, bestDist = Infinity;
   for (let i = 0; i < PALETTE.length; i++) {
+    if (!enabledColors.has(i)) continue;
     const p = PALETTE[i];
     const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
     if (d < bestDist) { bestDist = d; best = i; }
@@ -424,11 +487,9 @@ function nearestPaletteIndex(r, g, b) {
 function buildGridSVG(cellIndices, layout) {
   const { cols, rows, cellW, cellH, draw } = layout;
 
-  // Legend dimensions — 5 cols, no title, zero-padded numbers
-  const legendRows  = Math.ceil(PALETTE.length / LEGEND_COLS);
   const legendItemH = 26;
   const legendPadV  = 24;
-  const legendH     = legendRows * legendItemH + legendPadV;
+  const legendH     = Math.ceil(enabledColors.size / LEGEND_COLS) * legendItemH + legendPadV;
   const gridPixelW  = computeGridWidth(layout);
   const gridPixelH  = computeGridHeight(layout);
   const totalH      = gridPixelH + legendH;
@@ -464,10 +525,9 @@ function buildMosaicSVG(cellIndices, layout) {
   const gridPixelW = computeGridWidth(layout);
   const gridPixelH = computeGridHeight(layout);
 
-  const legendRows  = Math.ceil(PALETTE.length / LEGEND_COLS);
   const legendItemH = 26;
   const legendPadV  = 24;
-  const legendH     = legendRows * legendItemH + legendPadV;
+  const legendH     = Math.ceil(enabledColors.size / LEGEND_COLS) * legendItemH + legendPadV;
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -647,28 +707,30 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
 // no section title, white background.
 
 function appendLegend(svg, offsetY, svgW, itemH) {
+  // Only show colors that are enabled and appear in the grid
+  const usedIndices = [...enabledColors].sort((a, b) => a - b);
+  const legendCols  = LEGEND_COLS;
+  const legendRows  = Math.ceil(usedIndices.length / legendCols);
   const padX    = 16;
   const padTop  = 12;
   const startY  = offsetY + padTop;
-  const colW    = Math.floor((svgW - padX * 2) / LEGEND_COLS);
+  const colW    = Math.floor((svgW - padX * 2) / legendCols);
   const swatchW = 18;
   const swatchH = 14;
-  const legendH = Math.ceil(PALETTE.length / LEGEND_COLS) * itemH + padTop * 2;
+  const legendH = legendRows * itemH + padTop * 2;
 
-  // Legend background — white
   svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1));
 
-  PALETTE.forEach((color, i) => {
-    const col = i % LEGEND_COLS;
-    const row = Math.floor(i / LEGEND_COLS);
+  usedIndices.forEach((paletteIdx, pos) => {
+    const color = PALETTE[paletteIdx];
+    const col = pos % legendCols;
+    const row = Math.floor(pos / legendCols);
     const lx  = padX + col * colW;
     const ly  = startY + row * itemH;
 
-    // Swatch with black border (white swatch gets dashed border)
     const sw = rect(lx, ly, swatchW, swatchH, rgbStr(color), '#000000', 0.5);
     svg.appendChild(sw);
 
-    // Zero-padded number label, e.g. "01", "25"
     const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     lbl.setAttribute('x', lx + swatchW + 5);
     lbl.setAttribute('y', ly + swatchH / 2 + 1);
@@ -676,7 +738,7 @@ function appendLegend(svg, offsetY, svgW, itemH) {
     lbl.setAttribute('font-size', '11');
     lbl.setAttribute('dominant-baseline', 'central');
     lbl.setAttribute('fill', '#111111');
-    lbl.textContent = String(i + 1).padStart(2, '0');
+    lbl.textContent = String(paletteIdx + 1).padStart(2, '0');
     svg.appendChild(lbl);
   });
 }

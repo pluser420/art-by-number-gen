@@ -389,6 +389,68 @@ body {
   text-shadow: none;
 }
 
+/* Selectable palette swatches (pre-generation) */
+.swatch-selectable {
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.swatch-selectable:hover {
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+.swatch-disabled {
+  opacity: 0.2;
+  filter: grayscale(80%);
+}
+
+/* Palette selector header */
+.palette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.palette-header .section-label {
+  margin-bottom: 0;
+}
+
+.palette-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.btn-text:hover {
+  color: var(--primary-hover);
+}
+
+.palette-sep {
+  color: var(--text-light);
+}
+
+.palette-count {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 /* ── Loading ── */
 .loading-overlay {
   position: fixed;
