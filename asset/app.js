@@ -657,6 +657,11 @@ function buildGridSVG(cellIndices, layout) {
       const rightIdx = cellIndices[row * cols + (cols - 1)];
       draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], rightIdx, rightIdx === 0, true, true);
     }
+    // For even rows: also fill right edge gap
+    if (layout.label === 'Iso Triangles' && row % 2 === 0) {
+      const rightIdx = cellIndices[row * cols + (cols - 1)];
+      draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], rightIdx, rightIdx === 0, true, true);
+    }
   }
 
   // Outer border — 100% black per client spec
@@ -719,6 +724,11 @@ function buildMosaicSVG(cellIndices, layout) {
     if (layout.label === 'Iso Triangles' && row % 2 === 1) {
       const leftIdx  = cellIndices[row * cols + 0];
       draw(cellParent, -1, row, cellW, cellH, PALETTE[leftIdx], 0, leftIdx === 0, false);
+      const rightIdx = cellIndices[row * cols + (cols - 1)];
+      draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], 0, rightIdx === 0, false);
+    }
+    // For even rows: fill right edge gap
+    if (layout.label === 'Iso Triangles' && row % 2 === 0) {
       const rightIdx = cellIndices[row * cols + (cols - 1)];
       draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], 0, rightIdx === 0, false);
     }
@@ -975,9 +985,9 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     const yT     = row * cH;
     const yB     = (row + 1) * cH;
     const rowOff = row % 2 === 1 ? cW / 2 : 0;
-    // Draw from col=-1 to col=cols to cover edge gaps on odd rows
+    // Draw from col=-1 to col=cols to cover edge gaps on odd rows, and col=cols for even rows
     const colStart = row % 2 === 1 ? -1 : 0;
-    const colEnd   = row % 2 === 1 ? cols : cols;
+    const colEnd   = cols + 1;  // always draw one extra on the right
     for (let col = colStart; col < colEnd; col++) {
       const xL   = col * (cW / 2) + rowOff;
       const xMid = xL + cW / 2;
