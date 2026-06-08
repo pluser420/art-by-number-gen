@@ -648,6 +648,15 @@ function buildGridSVG(cellIndices, layout) {
       const isWhite = pIdx === 0;
       draw(cellParent, col, row, cellW, cellH, color, num, isWhite, true, true);
     }
+    // For odd rows: draw one extra triangle at col=-1 (fills left gap) and col=cols (fills right gap)
+    if (layout.label === 'Iso Triangles' && row % 2 === 1) {
+      // Left fill: sample from col=0 of this row
+      const leftIdx  = cellIndices[row * cols + 0];
+      draw(cellParent, -1, row, cellW, cellH, PALETTE[leftIdx], leftIdx, leftIdx === 0, true, true);
+      // Right fill: sample from col=cols-1 of this row
+      const rightIdx = cellIndices[row * cols + (cols - 1)];
+      draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], rightIdx, rightIdx === 0, true, true);
+    }
   }
 
   // Outer border — 100% black per client spec
@@ -705,6 +714,13 @@ function buildMosaicSVG(cellIndices, layout) {
       const pIdx  = cellIndices[idx];
       const color = PALETTE[pIdx];
       draw(cellParent, col, row, cellW, cellH, color, 0, pIdx === 0, false);
+    }
+    // For odd rows: fill left and right edge gaps
+    if (layout.label === 'Iso Triangles' && row % 2 === 1) {
+      const leftIdx  = cellIndices[row * cols + 0];
+      draw(cellParent, -1, row, cellW, cellH, PALETTE[leftIdx], 0, leftIdx === 0, false);
+      const rightIdx = cellIndices[row * cols + (cols - 1)];
+      draw(cellParent, cols, row, cellW, cellH, PALETTE[rightIdx], 0, rightIdx === 0, false);
     }
   }
 
@@ -959,7 +975,10 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     const yT     = row * cH;
     const yB     = (row + 1) * cH;
     const rowOff = row % 2 === 1 ? cW / 2 : 0;
-    for (let col = 0; col < cols; col++) {
+    // Draw from col=-1 to col=cols to cover edge gaps on odd rows
+    const colStart = row % 2 === 1 ? -1 : 0;
+    const colEnd   = row % 2 === 1 ? cols : cols;
+    for (let col = colStart; col < colEnd; col++) {
       const xL   = col * (cW / 2) + rowOff;
       const xMid = xL + cW / 2;
       const xR   = xL + cW;
