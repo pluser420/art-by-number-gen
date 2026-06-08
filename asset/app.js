@@ -709,9 +709,9 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — gapless tiling.
- *  Uses fill-only polygons (no stroke per cell).
- *  Grid lines are drawn separately as a post-pass to avoid gap artifacts.
+/** Triangle cell — proper gapless tiling.
+ *  Row-based alternating up▲/down▽ within each row.
+ *  Each triangle is drawn to fully cover its bounding box area.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
@@ -720,16 +720,22 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const midX = x0 + cW / 2;
 
-  const pts = isUp
-    ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
-    : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
+  // Extend triangles beyond their bounding box to fully eliminate gaps
+  const extra = 0.75;
+  let pts;
+  if (isUp) {
+    // Up▲: base at bottom, apex at top — extend base down and sides out
+    pts = `${x0 - extra},${y0 + cH + extra} ${midX},${y0 - extra} ${x0 + cW + extra},${y0 + cH + extra}`;
+  } else {
+    // Down▽: base at top, apex at bottom — extend base up and sides out
+    pts = `${x0 - extra},${y0 - extra} ${x0 + cW + extra},${y0 - extra} ${midX},${y0 + cH + extra}`;
+  }
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', fill); // same as fill — no visible border gap
-  poly.setAttribute('stroke-width', '1');
-  poly.setAttribute('stroke-linejoin', 'miter');
+  poly.setAttribute('stroke', fill);
+  poly.setAttribute('stroke-width', '0.5');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
