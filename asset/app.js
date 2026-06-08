@@ -633,8 +633,8 @@ function computeGridWidth(layout) {
     return Math.round(cols * cellW * 0.75 + cellW * 0.25);
   }
   if (layout.label === 'Triangles') {
-    // Each col step = cW/2, total = (cols+1) * cW/2
-    return Math.round((cols + 1) * cellW / 2);
+    // cols * cW — down▽ triangles overlap within the same width
+    return Math.round(cols * cellW);
   }
   return cols * cellW;
 }
@@ -714,32 +714,31 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — proper interlocking tiling.
- *  Each column step = cW/2. Up▲ and Down▽ share exact base corner points.
- *  Up▲ (even col): left=(col*cW/2, y+cH), apex=((col+1)*cW/2, y), right=((col+2)*cW/2, y+cH)
- *  Down▽ (odd col): left=((col-1)*cW/2, y), right=((col+1)*cW/2, y), apex=(col*cW/2, y+cH)
+/** Triangle cell — gapless tiling.
+ *  Up▲ at even cols, Down▽ at odd cols.
+ *  Both use full cW width. Down▽ is offset left by cW/2 to sit between up▲ triangles.
+ *  Fill only (no stroke). Grid lines drawn in post-pass.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const half = cW / 2;
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o    = 0.5; // tiny overshoot to seal sub-pixel gaps
+  const o    = 0.5;
 
   let pts, cx, cy;
   if (isUp) {
-    const xL = col * half;
-    const xA = (col + 1) * half;
-    const xR = (col + 2) * half;
-    pts = `${xL - o},${y0 + cH + o} ${xA},${y0 - o} ${xR + o},${y0 + cH + o}`;
-    cx  = xA;
+    // Up▲: positioned at col * cW
+    const x0   = col * cW;
+    const midX = x0 + cW / 2;
+    pts = `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`;
+    cx  = midX;
     cy  = y0 + cH * 0.65;
   } else {
-    const xL = (col - 1) * half;
-    const xA = col * half;
-    const xR = (col + 1) * half;
-    pts = `${xL - o},${y0 - o} ${xR + o},${y0 - o} ${xA},${y0 + cH + o}`;
-    cx  = xA;
+    // Down▽: shifted left by cW/2 so it sits between two up▲ triangles
+    const x0   = col * cW - cW / 2;
+    const midX = x0 + cW / 2;
+    pts = `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
+    cx  = midX;
     cy  = y0 + cH * 0.38;
   }
 
@@ -750,14 +749,12 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(half * 0.55))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
 
 /** Draw ALL triangle grid lines (diagonals + horizontals) as post-pass. */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
-  const half = cW / 2;
-
   function line(x1, y1, x2, y2) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     el.setAttribute('x1', x1); el.setAttribute('y1', y1);
@@ -767,8 +764,9 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
     svg.appendChild(el);
   }
 
-  // Horizontal lines at bottom of each up▲ row (= every row boundary)
-  const totalW = (cols + 1) * half;
+  const totalW = cols * cW;
+
+  // Horizontal lines at every row boundary
   for (let row = 0; row <= rows; row++) {
     line(0, row * cH, totalW, row * cH);
   }
@@ -779,18 +777,16 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
     for (let col = 0; col < cols; col++) {
       if (col % 2 === 0) {
         // Up▲
-        const xL = col * half;
-        const xA = (col + 1) * half;
-        const xR = (col + 2) * half;
-        line(xL, y0 + cH, xA, y0);
-        line(xA, y0,      xR, y0 + cH);
+        const x0   = col * cW;
+        const midX = x0 + cW / 2;
+        line(x0,   y0 + cH, midX,    y0);
+        line(midX, y0,      x0 + cW, y0 + cH);
       } else {
-        // Down▽
-        const xL = (col - 1) * half;
-        const xA = col * half;
-        const xR = (col + 1) * half;
-        line(xL, y0,      xA, y0 + cH);
-        line(xA, y0 + cH, xR, y0);
+        // Down▽ — shifted left by cW/2
+        const x0   = col * cW - cW / 2;
+        const midX = x0 + cW / 2;
+        line(x0,   y0,      midX,    y0 + cH);
+        line(midX, y0 + cH, x0 + cW, y0);
       }
     }
   }
