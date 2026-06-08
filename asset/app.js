@@ -91,7 +91,7 @@ const GRID_LAYOUTS = {
     cols: 40, rows: 60,
     cellW: 20, cellH: 20,
     draw: drawOgeeCell,
-    sample: sampleSquare,
+    sample: sampleOgee,
   },
   isotriangles: {
     label: 'Iso Triangles',
@@ -534,6 +534,17 @@ function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
+/** Sample center of ogee cell — offset rows, 75% vertical step */
+function sampleOgee(ctx, imgW, imgH, col, row, cols, rows) {
+  const vStep  = 0.75; // normalized vertical step
+  const rowOff = row % 2 === 1 ? 0.5 : 0;
+  const totalW = cols + 0.5;
+  const totalH = (rows - 1) * vStep + 1;
+  const cx = ((col + 0.5 + rowOff) / totalW) * imgW;
+  const cy = ((row * vStep + 0.5) / totalH) * imgH;
+  return samplePoint(ctx, Math.round(cx), Math.round(cy));
+}
+
 /** Sample center of triangle cell using new formula */
 function sampleTriangle(ctx, imgW, imgH, col, row, cols, rows) {
   const isUp = col % 2 === 0;
@@ -774,7 +785,7 @@ function computeGridWidth(layout) {
     return Math.round(cols * cellW + cellW / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // Odd rows offset by r=cW/2, so total width = cols*cW + cW/2
+    // Odd rows offset by cW/2, so total width = cols*cW + cW/2
     return Math.round(cols * cellW + cellW / 2);
   }
   return cols * cellW;
@@ -792,7 +803,7 @@ function computeGridHeight(layout) {
     return Math.round(0.5 * cellH * rows + cellH / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // vStep = cH*0.75, last center at (rows-1)*vStep + r, bottom = +r
+    // vStep = cH*0.75, last center at (rows-1)*vStep + cH/2, bottom = +cH/2
     return Math.round((rows - 1) * cellH * 0.75 + cellH);
   }
   return rows * cellH;
@@ -1026,36 +1037,56 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
 }
 
 /** Ogee / Fish Scale / Chain-mail tiling cell.
- *  Each cell is a circle. Adjacent circles overlap by ~50% creating the
- *  interlocking lens pattern seen in chain-mail / fish scale grids.
+ *  Each cell is a shape with 4 concave arc sides (curved square).
+ *  The shape is drawn as 4 circular arcs, one per side, each bowing inward.
+ *  Adjacent cells share edges, creating the interlocking chain/ogee pattern.
  *
- *  Layout:
- *   - Horizontal step  = cW          (circles touch side-to-side)
- *   - Vertical step    = cH * 0.75   (circles overlap 25% vertically)
- *   - Odd rows offset  = cW / 2      (brick offset)
- *   - Radius           = cW / 2
+ *  Each arc is a circular arc with radius = cW (large radius = gentle curve).
+ *  The 4 corners are at the midpoints of the bounding box edges.
+ *  Top corner:    (cx, y0)
+ *  Right corner:  (x0+cW, cy)
+ *  Bottom corner: (cx, y0+cH)
+ *  Left corner:   (x0, cy)
  *
- *  Each circle is drawn as a full circle shape. Overlapping strokes
- *  create the chain-link intersection lines automatically.
+ *  Odd rows offset right by cW/2 for interlocking.
  */
 function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const r    = cW / 2;
-  const vStep = cH * 0.75;                         // vertical overlap step
-  const cx   = col * cW + r + (row % 2) * r;       // odd rows offset by r
-  const cy   = row * vStep + r;
+  const rowOff = row % 2 === 1 ? cW / 2 : 0;
+  const x0   = col * cW + rowOff;
+  const y0   = row * (cH * 0.75);
+  const cx   = x0 + cW / 2;
+  const cy   = y0 + cH / 2;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
 
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', cx.toFixed(2));
-  circle.setAttribute('cy', cy.toFixed(2));
-  circle.setAttribute('r',  r.toFixed(2));
-  circle.setAttribute('fill', fill);
-  circle.setAttribute('stroke', BORDER_COLOR);
-  circle.setAttribute('stroke-width', BORDER_W);
-  svg.appendChild(circle);
+  // 4 corner points (diamond orientation)
+  const top    = [cx,        y0      ];
+  const right  = [x0 + cW,  cy      ];
+  const bottom = [cx,        y0 + cH ];
+  const left   = [x0,        cy      ];
+
+  // Arc radius — larger than half the cell so sides bow inward
+  const r = cW * 0.75;
+  const sweep = 0; // 0 = counter-clockwise arc (concave inward)
+
+  // Path: move to top, arc to right, arc to bottom, arc to left, arc back to top
+  const d = [
+    `M ${top[0]},${top[1]}`,
+    `A ${r} ${r} 0 0 ${sweep} ${right[0]},${right[1]}`,
+    `A ${r} ${r} 0 0 ${sweep} ${bottom[0]},${bottom[1]}`,
+    `A ${r} ${r} 0 0 ${sweep} ${left[0]},${left[1]}`,
+    `A ${r} ${r} 0 0 ${sweep} ${top[0]},${top[1]}`,
+    'Z'
+  ].join(' ');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill', fill);
+  path.setAttribute('stroke', BORDER_COLOR);
+  path.setAttribute('stroke-width', BORDER_W);
+  svg.appendChild(path);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(r * 0.65))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
 
