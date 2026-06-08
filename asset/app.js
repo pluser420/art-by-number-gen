@@ -519,9 +519,9 @@ function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
 /** Sample center of triangle cell */
 function sampleTriangle(ctx, imgW, imgH, col, row, cols, rows) {
   const isUp = col % 2 === 0;
-  // For down▽, sample from shifted position (left by cW/2)
-  const baseX = isUp ? col : col - 0.5;
-  const cx = ((baseX + 0.5) / cols) * imgW;
+  // Apex X = (col+1)*0.5/cols * imgW for up▲, col*0.5/cols for down▽
+  const apexX = isUp ? (col + 1) * 0.5 / cols : col * 0.5 / cols;
+  const cx = apexX * imgW;
   const cy = isUp
     ? ((row + 0.67) / rows) * imgH
     : ((row + 0.33) / rows) * imgH;
@@ -632,6 +632,10 @@ function computeGridWidth(layout) {
   if (layout.label === 'Hexagons') {
     return Math.round(cols * cellW * 0.75 + cellW * 0.25);
   }
+  if (layout.label === 'Triangles') {
+    // Each col step = cW/2, total = (cols+1) * cW/2
+    return Math.round((cols + 1) * cellW / 2);
+  }
   return cols * cellW;
 }
 
@@ -710,26 +714,33 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — fill only, 1px oversized to seal sub-pixel gaps.
- *  Up▲ at even cols, Down▽ at odd cols shifted left by cW/2 for proper interlocking.
- *  All grid lines drawn in drawTriangleGridLines() post-pass.
+/** Triangle cell — proper interlocking tiling.
+ *  Each column step = cW/2. Up▲ and Down▽ share exact base corner points.
+ *  Up▲ (even col): left=(col*cW/2, y+cH), apex=((col+1)*cW/2, y), right=((col+2)*cW/2, y+cH)
+ *  Down▽ (odd col): left=((col-1)*cW/2, y), right=((col+1)*cW/2, y), apex=(col*cW/2, y+cH)
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const x0   = col * cW;
+  const half = cW / 2;
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o    = 1;
+  const o    = 0.5; // tiny overshoot to seal sub-pixel gaps
 
-  let pts;
+  let pts, cx, cy;
   if (isUp) {
-    const midX = x0 + cW / 2;
-    pts = `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`;
+    const xL = col * half;
+    const xA = (col + 1) * half;
+    const xR = (col + 2) * half;
+    pts = `${xL - o},${y0 + cH + o} ${xA},${y0 - o} ${xR + o},${y0 + cH + o}`;
+    cx  = xA;
+    cy  = y0 + cH * 0.65;
   } else {
-    // Shift down▽ left by cW/2 so its left edge aligns with the up▲ apex
-    const sx   = x0 - cW / 2;
-    const midX = sx + cW / 2;
-    pts = `${sx - o},${y0 - o} ${sx + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
+    const xL = (col - 1) * half;
+    const xA = col * half;
+    const xR = (col + 1) * half;
+    pts = `${xL - o},${y0 - o} ${xR + o},${y0 - o} ${xA},${y0 + cH + o}`;
+    cx  = xA;
+    cy  = y0 + cH * 0.38;
   }
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -739,14 +750,14 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    const numCx = isUp ? x0 + cW / 2 : x0 - cW / 2 + cW / 2;
-    const numCy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
-    svg.appendChild(text(numCx, numCy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(half * 0.55))));
   }
 }
 
 /** Draw ALL triangle grid lines (diagonals + horizontals) as post-pass. */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
+  const half = cW / 2;
+
   function line(x1, y1, x2, y2) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     el.setAttribute('x1', x1); el.setAttribute('y1', y1);
@@ -757,27 +768,29 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
   }
 
   // Horizontal lines — one per row boundary
+  const totalW = (cols + 1) * half;
   for (let row = 0; row <= rows; row++) {
-    line(0, row * cH, cols * cW, row * cH);
+    line(0, row * cH, totalW, row * cH);
   }
 
   // Diagonal lines — two per cell
   for (let row = 0; row < rows; row++) {
+    const y0 = row * cH;
     for (let col = 0; col < cols; col++) {
-      const x0   = col * cW;
-      const y0   = row * cH;
-      const isUp = col % 2 === 0;
-
-      if (isUp) {
-        const midX = x0 + cW / 2;
-        line(x0,   y0 + cH, midX,    y0);
-        line(midX, y0,      x0 + cW, y0 + cH);
+      if (col % 2 === 0) {
+        // Up▲
+        const xL = col * half;
+        const xA = (col + 1) * half;
+        const xR = (col + 2) * half;
+        line(xL, y0 + cH, xA, y0);
+        line(xA, y0,      xR, y0 + cH);
       } else {
-        // Shifted left by cW/2
-        const sx   = x0 - cW / 2;
-        const midX = sx + cW / 2;
-        line(sx,   y0,      midX,    y0 + cH);
-        line(midX, y0 + cH, sx + cW, y0);
+        // Down▽
+        const xL = (col - 1) * half;
+        const xA = col * half;
+        const xR = (col + 1) * half;
+        line(xL, y0,      xA, y0 + cH);
+        line(xA, y0 + cH, xR, y0);
       }
     }
   }
