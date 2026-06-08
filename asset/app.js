@@ -616,10 +616,18 @@ function buildGridSVG(cellIndices, layout) {
 
   const gridPixelW = computeGridWidth(layout);
   const gridPixelH = computeGridHeight(layout);
-  const svg = makeSVG(gridPixelW, gridPixelH);
+
+  // Pre-calculate legend height so we can size the SVG correctly up front
+  const legendItemH = 20;
+  const legendPad   = 14;
+  const legendRows  = Math.ceil(PALETTE.filter((_, i) => enabledColors.has(i)).length / LEGEND_COLS);
+  const legendH     = legendRows * legendItemH + legendPad * 2;
+  const totalH      = gridPixelH + legendH;
+
+  const svg = makeSVG(gridPixelW, totalH);
 
   // White background
-  svg.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#ffffff'));
+  svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -642,6 +650,9 @@ function buildGridSVG(cellIndices, layout) {
     drawIsoTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
 
+  // Legend appended below the grid
+  appendLegend(svg, gridPixelH, gridPixelW);
+
   return svg;
 }
 
@@ -649,10 +660,18 @@ function buildMosaicSVG(cellIndices, layout) {
   const { cols, rows, cellW, cellH, draw } = layout;
   const gridPixelW = computeGridWidth(layout);
   const gridPixelH = computeGridHeight(layout);
-  const svg = makeSVG(gridPixelW, gridPixelH);
+
+  // Pre-calculate legend height
+  const legendItemH = 20;
+  const legendPad   = 14;
+  const legendRows  = Math.ceil(PALETTE.filter((_, i) => enabledColors.has(i)).length / LEGEND_COLS);
+  const legendH     = legendRows * legendItemH + legendPad * 2;
+  const totalH      = gridPixelH + legendH;
+
+  const svg = makeSVG(gridPixelW, totalH);
 
   // White background — covers uncovered corners for triangle layout
-  svg.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#ffffff'));
+  svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -671,6 +690,9 @@ function buildMosaicSVG(cellIndices, layout) {
   } else if (layout.label === 'Iso Triangles') {
     drawIsoTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
+
+  // Legend appended below the grid
+  appendLegend(svg, gridPixelH, gridPixelW);
 
   return svg;
 }
@@ -1047,44 +1069,52 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
 }
 
 // ─── Legend Builder ───────────────────────────────────────────────────────────
-// Layout matches reference images: 5 columns, swatch + zero-padded number + name,
-// no section title, white background.
+// 5-column layout: color swatch + zero-padded number + color name
+// Appended directly below the grid, white background, black border.
 
-function appendLegend(svg, offsetY, svgW, itemH) {
-  // Only show colors that are enabled and appear in the grid
-  const usedIndices = [...enabledColors].sort((a, b) => a - b);
+function appendLegend(svg, offsetY, svgW) {
+  const allIndices  = PALETTE.map((_, i) => i).filter(i => enabledColors.has(i));
   const legendCols  = LEGEND_COLS;
-  const legendRows  = Math.ceil(usedIndices.length / legendCols);
+  const legendRows  = Math.ceil(allIndices.length / legendCols);
+  const itemH   = 20;
   const padX    = 16;
-  const padTop  = 12;
+  const padTop  = 14;
+  const padBot  = 14;
   const startY  = offsetY + padTop;
   const colW    = Math.floor((svgW - padX * 2) / legendCols);
-  const swatchW = 18;
-  const swatchH = 14;
-  const legendH = legendRows * itemH + padTop * 2;
+  const swatchW = 16;
+  const swatchH = 13;
+  const legendH = legendRows * itemH + padTop + padBot;
 
-  svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1));
+  // Legend background + border
+  svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1.5));
 
-  usedIndices.forEach((paletteIdx, pos) => {
+  allIndices.forEach((paletteIdx, pos) => {
     const color = PALETTE[paletteIdx];
-    const col = pos % legendCols;
-    const row = Math.floor(pos / legendCols);
-    const lx  = padX + col * colW;
-    const ly  = startY + row * itemH;
+    const col   = pos % legendCols;
+    const row   = Math.floor(pos / legendCols);
+    const lx    = padX + col * colW;
+    const ly    = startY + row * itemH;
+    const midY  = ly + swatchH / 2;
 
+    // Color swatch
     const sw = rect(lx, ly, swatchW, swatchH, rgbStr(color), '#000000', 0.5);
     svg.appendChild(sw);
 
-    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    lbl.setAttribute('x', lx + swatchW + 5);
-    lbl.setAttribute('y', ly + swatchH / 2 + 1);
-    lbl.setAttribute('font-family', 'Arial, sans-serif');
-    lbl.setAttribute('font-size', '11');
-    lbl.setAttribute('dominant-baseline', 'central');
-    lbl.setAttribute('fill', '#111111');
-    lbl.textContent = String(paletteIdx + 1).padStart(2, '0');
-    svg.appendChild(lbl);
+    // Number label (e.g. "01")
+    const numLbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    numLbl.setAttribute('x', lx + swatchW + 4);
+    numLbl.setAttribute('y', midY + 1);
+    numLbl.setAttribute('font-family', 'Arial, sans-serif');
+    numLbl.setAttribute('font-size', '10');
+    numLbl.setAttribute('font-weight', 'bold');
+    numLbl.setAttribute('dominant-baseline', 'central');
+    numLbl.setAttribute('fill', '#111111');
+    numLbl.textContent = String(paletteIdx === 0 ? 25 : paletteIdx).padStart(2, '0');
+    svg.appendChild(numLbl);
   });
+
+  return legendH;
 }
 
 // ─── Palette UI ───────────────────────────────────────────────────────────────
