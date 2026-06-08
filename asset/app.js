@@ -88,6 +88,7 @@ const GRID_LAYOUTS = {
   },
   ogee: {
     label: 'Ogee (Fish Scale)',
+    hidden: true,
     cols: 40, rows: 60,
     cellW: 20, cellH: 20,
     draw: drawOgeeCell,
@@ -289,6 +290,7 @@ editorResetBtn.addEventListener('click', () => {
 colorEditorClose.addEventListener('click', closeColorEditor);
 colorEditorBackdrop.addEventListener('click', closeColorEditor);
 Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
+  if (layout.hidden) return;
   const opt = document.createElement('option');
   opt.value = key;
   opt.textContent = layout.label;
