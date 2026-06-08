@@ -418,11 +418,6 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files.length) handleFile(fileInput.files[0]);
 });
 
-// Browse button — direct trigger, most reliable cross-browser approach
-document.getElementById('browseBtn').addEventListener('click', () => {
-  fileInput.click();
-});
-
 dropZone.addEventListener('dragover', (e) => {
   e.preventDefault();
   dropZone.classList.add('drag-over');
