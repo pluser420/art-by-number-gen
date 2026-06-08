@@ -421,11 +421,18 @@ async function runPipeline() {
     // Use the user-specified cols/rows; derive cell size to match
     const cols  = customCols;
     const rows  = customRows;
-    // Keep cell aspect ratio from the base layout, scaled to fit the new grid
     const scaleW = baseLayout.cols / cols;
     const scaleH = baseLayout.rows / rows;
-    const cellW  = Math.max(4, Math.round(baseLayout.cellW * scaleW));
-    const cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
+    let cellW  = Math.max(4, Math.round(baseLayout.cellW * scaleW));
+    let cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
+
+    // For square-cell layouts, enforce equal cellW and cellH so cells stay square
+    if (['squares', 'circles', 'triangles', 'diamonds'].includes(selectedLayout)) {
+      const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
+      cellW = cellSize;
+      cellH = cellSize;
+    }
+
     const layout = { ...baseLayout, cols, rows, cellW, cellH };
 
     setLoading(true, 'Mapping to palette…');
