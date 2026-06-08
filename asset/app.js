@@ -95,8 +95,8 @@ const GRID_LAYOUTS = {
   },
   isotriangles: {
     label: 'Iso Triangles',
-    cols: 40, rows: 46,
-    cellW: 28, cellH: 12,  // pair-based: each pair = cW wide, triangle base = cW/2, cH = (cW/2)*√3/2 ≈ 12
+    cols: 80, rows: 60,
+    cellW: 14, cellH: 12,  // cols = total triangles per row; cellW = base of each; cellH = cellW*√3/2
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
@@ -441,10 +441,10 @@ async function runPipeline() {
       cellH = cellSize;
     }
 
-    // For iso triangles, preserve equilateral ratio: cellH = (cellW/2) * √3/2
+    // For iso triangles, preserve equilateral ratio: cellH = cellW * √3/2
     if (selectedLayout === 'isotriangles') {
-      cellW = Math.max(6, Math.round(baseLayout.cellW * scaleW));
-      cellH = Math.max(3, Math.round((cellW / 2) * Math.sqrt(3) / 2));
+      cellW = Math.max(4, Math.round(baseLayout.cellW * scaleW));
+      cellH = Math.max(3, Math.round(cellW * Math.sqrt(3) / 2));
     }
 
     const layout = { ...baseLayout, cols, rows, cellW, cellH };
@@ -708,7 +708,8 @@ function computeGridWidth(layout) {
       : 0.5 * (2 + lastCol) * cellW);
   }
   if (layout.label === 'Iso Triangles') {
-    return Math.round(cols * cellW);
+    // Each col steps cW/2; last triangle right edge = cols*(cW/2) + cW/2
+    return Math.round(cols * (layout.cellW / 2) + layout.cellW / 2);
   }
   if (layout.label === 'Diamonds') {
     // Odd rows shift right by cW/2 extra, so max right = cols*cW + cW/2
@@ -899,10 +900,9 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
   }
 }
 
-/** Draw iso-triangle grid lines for the 'Iso Triangles' layout.
- *  cols = number of triangle pairs. Each pair occupies cW width.
- *  Visual triangles per row = cols * 2 (up▲ + down▽ per pair).
- *  Horizontal lines every cH + two diagonals per pair (shared mid-point).
+/** Draw iso-triangle grid lines.
+ *  Each triangle col steps by cW/2 in x. Total width = cols*(cW/2) + cW/2.
+ *  Horizontal lines every cH + diagonal edges per triangle.
  */
 function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
   function line(x1, y1, x2, y2) {
@@ -914,7 +914,7 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     svg.appendChild(el);
   }
 
-  const totalW = cols * cW;
+  const totalW = cols * (cW / 2) + cW / 2;
   const totalH = rows * cH;
 
   // Horizontal lines at every row boundary
@@ -922,21 +922,24 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     line(0, row * cH, totalW, row * cH);
   }
 
-  // Per row: diagonal lines for each pair slot
+  // Diagonal edges per triangle per row
   for (let row = 0; row < rows; row++) {
     const yT = row * cH;
     const yB = (row + 1) * cH;
-    for (let pair = 0; pair < cols; pair++) {
-      const xL   = pair * cW;
-      const xMid = pair * cW + cW / 2;
-      const xR   = pair * cW + cW;
-      // Left diagonal (shared by up▲ left edge and down▽ left edge): top-mid → bottom-left
-      line(xMid, yT, xL, yB);
-      // Right diagonal: top-mid → bottom-right
-      line(xMid, yT, xR, yB);
-      // Vertical divider at pair boundary (left edge of pair = right edge of previous pair)
-      // Covered by the outer border; interior verticals at each xR
-      line(xR, yT, xR, yB);
+    for (let col = 0; col < cols; col++) {
+      const xL   = col * (cW / 2);
+      const xMid = xL + cW / 2;
+      const xR   = xL + cW;
+      const isUp = col % 2 === 0;
+      if (isUp) {
+        // up▲: left-base → apex-top, apex-top → right-base
+        line(xL, yB, xMid, yT);
+        line(xMid, yT, xR, yB);
+      } else {
+        // down▽: left-top → apex-bottom, apex-bottom → right-top
+        line(xL, yT, xMid, yB);
+        line(xMid, yB, xR, yT);
+      }
     }
   }
 }
@@ -1000,36 +1003,37 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
   }
 }
 
-/** Isometric triangle cell — tight equilateral tiling.
- *  cols is the number of triangle pairs per row (each pair = up▲ + down▽ sharing cW width).
- *  So visual triangles per row = cols * 2, each triangle is cW/2 wide.
- *  Even col index = up▲, odd col index = down▽ within each pair slot.
- *  cH = (cW/2) * √3/2 for equilateral (half-width base).
+/** Isometric triangle cell — proper equilateral tiling matching reference image.
+ *  cols = total number of triangles per row (even col = up▲, odd col = down▽).
+ *  Each triangle has base = cW, height = cH = cW * √3/2.
+ *  X positions: each triangle steps by cW/2 so they interleave correctly:
+ *    up▲  col c: left = (c/2)*cW, right = (c/2+1)*cW, apex at top center
+ *    down▽ col c: left = (c/2)*cW, right = (c/2+1)*cW, apex at bottom center  (same x as up▲ before it)
+ *  Actually: col c x-left = floor(c/2)*cW + (c%2 === 0 ? 0 : cW/2) ... 
+ *  Simpler: x offset per col = cW/2, so:
+ *    xLeft = col * (cW/2) - (isUp ? 0 : cW/2)... 
  *
- *  Vertex positions for pair slot p = Math.floor(col/2):
- *    x_left  = p * cW
- *    x_mid   = p * cW + cW/2
- *    x_right = p * cW + cW
- *    y_top   = row * cH
- *    y_bot   = (row+1) * cH
- *
- *  Up▲   (col even): bottom-left, apex-top-mid, bottom-right
- *  Down▽ (col odd):  top-left, top-right, apex-bottom-mid
+ *  Correct formula from reference:
+ *    up▲ at logical col c (c=0,2,4...): xL = (c/2)*cW, xR = (c/2+1)*cW, apex y = row*cH
+ *    down▽ at logical col c (c=1,3,5...): xL = ((c-1)/2)*cW + cW/2 = (c-1)*cW/2 + cW/2
+ *  
+ *  Unified: every triangle i in a row starts at x = i * (cW/2), width = cW
+ *    up▲ (i even): base at bottom (y+cH), apex at top-center (x + cW/2, y)
+ *    down▽ (i odd): base at top (y), apex at bottom-center (x + cW/2, y+cH)
  */
 function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const pair  = Math.floor(col / 2);
-  const isUp  = col % 2 === 0;
-  const xL    = pair * cW;
-  const xMid  = pair * cW + cW / 2;
-  const xR    = pair * cW + cW;
-  const yT    = row * cH;
-  const yB    = (row + 1) * cH;
-  const fill  = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o     = 0.3;
+  const isUp = col % 2 === 0;
+  const xL   = col * (cW / 2);
+  const xR   = xL + cW;
+  const xMid = xL + cW / 2;
+  const yT   = row * cH;
+  const yB   = (row + 1) * cH;
+  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const o    = 0.3;
 
   const pts = isUp
-    ? `${xL - o},${yB + o} ${xMid},${yT - o} ${xR + o},${yB + o}`
-    : `${xL - o},${yT - o} ${xR + o},${yT - o} ${xMid},${yB + o}`;
+    ? `${xL - o},${yB + o} ${xMid},${yT - o} ${xR + o},${yB + o}`   // up▲
+    : `${xL - o},${yT - o} ${xR + o},${yT - o} ${xMid},${yB + o}`;  // down▽
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -1040,16 +1044,15 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
   if (withNumber && !isWhite) {
     const cx = xMid;
     const cy = isUp ? yT + cH * 0.65 : yT + cH * 0.38;
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(3, Math.floor(cW * 0.18))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(3, Math.floor(cW * 0.28))));
   }
 }
 
 function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
-  // cols = number of triangle pairs; each pair is cW wide, so total visual cols = cols*2
-  const pair = Math.floor(col / 2);
+  // Each triangle steps by cW/2; total width = cols*(cW/2) + cW/2 = (cols+1)*cW/2
+  // x center of triangle col = (col * (cW/2) + cW/2) normalized = (col + 1) / (cols + 1)
   const isUp = col % 2 === 0;
-  // x center = pair * (1/cols) + (0.5/cols) for mid of pair
-  const cx = ((pair + 0.5) / cols) * imgW;
+  const cx = ((col + 1) / (cols + 1)) * imgW;
   const cy = isUp ? ((row + 0.67) / rows) * imgH : ((row + 0.33) / rows) * imgH;
   return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
