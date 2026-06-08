@@ -721,8 +721,9 @@ function drawRectCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
 function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const cx = col * cW + cW / 2;
   const cy = row * cH + cH / 2;
-  const rx = cW / 2;
-  const ry = cH / 2;
+  // Expand by 1px to fully seal gaps between adjacent hexagons
+  const rx = cW / 2 + 1;
+  const ry = cH / 2 + 1;
 
   const pts = [];
   for (let i = 0; i < 6; i++) {
