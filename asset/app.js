@@ -698,32 +698,37 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — gapless tiling.
- *  Even col = up▲, odd col = down▽.
- *  Triangles extend 0.5px beyond bounding box to eliminate gaps caused by stroke rendering.
+/** Triangle cell — gapless tiling using background fill technique.
+ *  Draw a filled background rect first, then the triangle on top.
+ *  The rect fills any gaps caused by sub-pixel rendering.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
   const y0   = row * cH;
   const isUp = col % 2 === 0;
-  const o    = 0.5; // overlap to eliminate gaps
-
-  const left  = x0 - o;
-  const right = x0 + cW + o;
-  const top   = y0 - o;
-  const bot   = y0 + cH + o;
-  const midX  = x0 + cW / 2;
-
-  const pts = isUp
-    ? `${left},${bot} ${midX},${top} ${right},${bot}`
-    : `${left},${top} ${right},${top} ${midX},${bot}`;
-
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+
+  // Background rect with the same fill — covers any sub-pixel gaps
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('x', x0);
+  bg.setAttribute('y', y0);
+  bg.setAttribute('width', cW);
+  bg.setAttribute('height', cH);
+  bg.setAttribute('fill', fill);
+  bg.setAttribute('stroke', 'none');
+  svg.appendChild(bg);
+
+  const midX = x0 + cW / 2;
+  const pts = isUp
+    ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
+    : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
+
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
   poly.setAttribute('stroke', '#000000');
   poly.setAttribute('stroke-width', '0.5');
+  poly.setAttribute('stroke-linejoin', 'miter');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
