@@ -21,14 +21,12 @@
       <div class="upload-cols">
 
         <!-- Left: drop zone -->
-        <div class="drop-zone" id="dropZone">
-          <label class="drop-zone-label" for="fileInput">
-            <p class="drop-main">Drop an image here</p>
-            <p class="drop-hint">JPG or PNG · max 20 MB · min 40×60 px</p>
-            <span class="btn btn-browse">Browse files</span>
-          </label>
+        <label class="drop-zone" id="dropZone" for="fileInput">
+          <p class="drop-main">Drop an image here</p>
+          <p class="drop-hint">JPG or PNG · max 20 MB · min 40×60 px</p>
+          <span class="btn btn-browse">Browse files</span>
           <input type="file" id="fileInput" accept="image/jpeg,image/png" hidden />
-        </div>
+        </label>
 
         <!-- Right: preview (hidden until file loaded) -->
         <div class="preview-panel" id="previewPanel" style="display:none;">
