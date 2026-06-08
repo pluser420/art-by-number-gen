@@ -679,8 +679,8 @@ function computeGridWidth(layout) {
     return Math.round(cols * cellW + cellW / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // Odd rows offset by cW/2, so total width = cols*cW + cW/2
-    return Math.round(cols * cellW + cellW / 2);
+    // Simple grid — octagons sit in their own bounding boxes
+    return Math.round(cols * cellW);
   }
   return cols * cellW;
 }
@@ -697,8 +697,8 @@ function computeGridHeight(layout) {
     return Math.round(0.5 * cellH * rows + cellH / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // rows overlap by cH/2, total height = rows * cH/2 + cH/2
-    return Math.round(rows * cellH / 2 + cellH / 2);
+    // Simple grid — octagons sit in their own bounding boxes
+    return Math.round(rows * cellH);
   }
   return rows * cellH;
 }
@@ -882,31 +882,41 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   }
 }
 
-/** Ogee / Fish-scale cell.
- *  Each cell is an ellipse. Odd rows offset right by cW/2.
- *  Ellipses overlap by cH/2 vertically to create the fish-scale interlocking look.
- *  Only the bottom half of each ellipse is "owned" by that cell (top half overlaps prev row).
+/** Ogee / Octagon+Square tiling cell.
+ *  Each cell is a regular octagon drawn within cW × cH bounding box.
+ *  Adjacent octagons share edges perfectly — no offset needed.
+ *  The "cut" corners create small squares at the intersections.
  */
 function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const rowOff = row % 2 === 1 ? cW / 2 : 0;
-  const cx     = col * cW + cW / 2 + rowOff;
-  const cy     = row * (cH / 2) + cH / 2; // rows overlap by cH/2
-  const rx     = cW / 2;
-  const ry     = cH / 2;
-  const fill   = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const x0   = col * cW;
+  const y0   = row * cH;
+  // Cut = 1/(2+√2) of the side length — creates a regular octagon
+  const cut  = Math.min(cW, cH) / (2 + Math.SQRT2);
+  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
 
-  const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-  ellipse.setAttribute('cx', cx.toFixed(2));
-  ellipse.setAttribute('cy', cy.toFixed(2));
-  ellipse.setAttribute('rx', rx.toFixed(2));
-  ellipse.setAttribute('ry', ry.toFixed(2));
-  ellipse.setAttribute('fill', fill);
-  ellipse.setAttribute('stroke', BORDER_COLOR);
-  ellipse.setAttribute('stroke-width', BORDER_W);
-  svg.appendChild(ellipse);
+  // 8 points of octagon within bounding box
+  const pts = [
+    `${x0 + cut},${y0}`,
+    `${x0 + cW - cut},${y0}`,
+    `${x0 + cW},${y0 + cut}`,
+    `${x0 + cW},${y0 + cH - cut}`,
+    `${x0 + cW - cut},${y0 + cH}`,
+    `${x0 + cut},${y0 + cH}`,
+    `${x0},${y0 + cH - cut}`,
+    `${x0},${y0 + cut}`,
+  ].join(' ');
+
+  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  poly.setAttribute('points', pts);
+  poly.setAttribute('fill', fill);
+  poly.setAttribute('stroke', BORDER_COLOR);
+  poly.setAttribute('stroke-width', BORDER_W);
+  svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(rx * 0.55))));
+    const cx = x0 + cW / 2;
+    const cy = y0 + cH / 2;
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.3))));
   }
 }
 
