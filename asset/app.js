@@ -14,36 +14,35 @@
 
 'use strict';
 
-// ─── Fixed 25-Color Palette ───────────────────────────────────────────────────
-// Color 25 = white = "no painting" (leave cell blank)
-// PLACEHOLDER values — replace RGB entries with final client-approved values.
-// Format: { name, r, g, b }
+// ─── Client Palette (24 colors + white) ──────────────────────────────────────
+// Color 0 = white = blank cell (no number printed)
+// Colors 1–24 as provided by client
 const PALETTE = [
-  { name: 'Deep Red',       r: 180, g:  30, b:  30 },  //  1
-  { name: 'Red',            r: 220, g:  50, b:  50 },  //  2
-  { name: 'Orange Red',     r: 230, g: 100, b:  40 },  //  3
-  { name: 'Orange',         r: 230, g: 150, b:  40 },  //  4
-  { name: 'Yellow',         r: 240, g: 220, b:  50 },  //  5
-  { name: 'Yellow Green',   r: 180, g: 210, b:  60 },  //  6
-  { name: 'Light Green',    r: 100, g: 190, b:  80 },  //  7
-  { name: 'Green',          r:  50, g: 150, b:  60 },  //  8
-  { name: 'Dark Green',     r:  20, g: 100, b:  40 },  //  9
-  { name: 'Teal',           r:  30, g: 140, b: 130 },  // 10
-  { name: 'Light Blue',     r:  80, g: 180, b: 220 },  // 11
-  { name: 'Sky Blue',       r:  60, g: 140, b: 210 },  // 12
-  { name: 'Blue',           r:  40, g:  80, b: 180 },  // 13
-  { name: 'Dark Blue',      r:  20, g:  40, b: 130 },  // 14
-  { name: 'Violet',         r:  90, g:  40, b: 160 },  // 15
-  { name: 'Purple',         r: 140, g:  50, b: 160 },  // 16
-  { name: 'Pink',           r: 220, g: 100, b: 160 },  // 17
-  { name: 'Light Pink',     r: 240, g: 180, b: 200 },  // 18
-  { name: 'Brown',          r: 130, g:  70, b:  30 },  // 19
-  { name: 'Tan',            r: 200, g: 160, b: 110 },  // 20
-  { name: 'Light Gray',     r: 200, g: 200, b: 200 },  // 21
-  { name: 'Gray',           r: 130, g: 130, b: 130 },  // 22
-  { name: 'Dark Gray',      r:  70, g:  70, b:  70 },  // 23
-  { name: 'Black',          r:  15, g:  15, b:  15 },  // 24
-  { name: 'White (no paint)', r: 255, g: 255, b: 255 }, // 25 — leave cell blank
+  { name: 'White',        r: 255, g: 255, b: 255 }, // 0 — blank, no number
+  { name: 'Dark Green',   r:   1, g: 118, b:  50 }, // 1  #017632
+  { name: 'Green',        r:  79, g: 183, b:  24 }, // 2  #4FB718
+  { name: 'Yellow Green', r: 175, g: 202, b:  11 }, // 3  #AFCA0B
+  { name: 'Pale Yellow',  r: 255, g: 246, b: 103 }, // 4  #FFF667
+  { name: 'Yellow',       r: 255, g: 234, b:   0 }, // 5  #FFEA00
+  { name: 'Orange',       r: 255, g: 109, b:   0 }, // 6  #FF6D00
+  { name: 'Red',          r: 255, g:  30, b:  39 }, // 7  #FF1E27
+  { name: 'Crimson',      r: 196, g:   0, b:  64 }, // 8  #C40040
+  { name: 'Magenta',      r: 179, g:  27, b: 127 }, // 9  #B31B7F
+  { name: 'Hot Pink',     r: 255, g:  19, b: 166 }, // 10 #FF13A6
+  { name: 'Deep Purple',  r:  88, g:   0, b: 120 }, // 11 #580078
+  { name: 'Dark Blue',    r:   0, g:  63, b: 158 }, // 12 #003F9E
+  { name: 'Sky Blue',     r:   0, g: 150, b: 227 }, // 13 #0096E3
+  { name: 'Light Blue',   r: 179, g: 221, b: 234 }, // 14 #B3DDEA
+  { name: 'Lavender',     r: 233, g: 208, b: 247 }, // 15 #E9D0F7
+  { name: 'Peach',        r: 255, g: 227, b: 205 }, // 16 #FFE3CD
+  { name: 'Light Pink',   r: 243, g: 183, b: 191 }, // 17 #F3B7BF
+  { name: 'Tan',          r: 235, g: 171, b: 127 }, // 18 #EBAB7F
+  { name: 'Amber',        r: 183, g: 113, b:   2 }, // 19 #B77102
+  { name: 'Brown',        r: 141, g: 105, b:  68 }, // 20 #8D6944
+  { name: 'Dark Brown',   r: 100, g:  17, b:   0 }, // 21 #641100
+  { name: 'Silver',       r: 145, g: 151, b: 163 }, // 22 #9197A3
+  { name: 'Slate',        r:  83, g:  90, b: 100 }, // 23 #535A64
+  { name: 'Black',        r:   0, g:   0, b:   0 }, // 24 #000000
 ];
 
 // ─── Grid Layout Definitions ──────────────────────────────────────────────────
@@ -153,9 +152,9 @@ function buildPaletteSelector() {
     item.style.background = rgbStr(color);
     item.dataset.light = isLightColor(color) ? 'true' : 'false';
     item.dataset.idx = i;
-    if (i === 24) item.style.outline = '1.5px dashed #999';
-    item.title = `${i + 1}. ${color.name} — click to edit, right-click to toggle`;
-    item.textContent = String(i + 1).padStart(2, '0');
+    if (i === 0) item.style.outline = '1.5px dashed #999'; // white = index 0
+    item.title = `${i === 0 ? 0 : i}. ${color.name} — click to edit, right-click to toggle`;
+    item.textContent = i === 0 ? '0' : String(i).padStart(2, '0');
     if (!enabledColors.has(i)) item.classList.add('swatch-disabled');
 
     // Left-click: open color editor
@@ -199,12 +198,12 @@ selectAllBtn.addEventListener('click', () => {
 });
 
 deselectAllBtn.addEventListener('click', () => {
-  // Keep only color index 24 (white/no-paint) as a fallback
+  // Keep only color index 0 (white/blank) as a fallback
   enabledColors.clear();
-  enabledColors.add(24);
+  enabledColors.add(0);
   paletteSelector.querySelectorAll('.swatch-selectable').forEach(el => {
     const idx = parseInt(el.dataset.idx, 10);
-    if (idx !== 24) el.classList.add('swatch-disabled');
+    if (idx !== 0) el.classList.add('swatch-disabled');
     else el.classList.remove('swatch-disabled');
   });
   updatePaletteCount();
@@ -661,8 +660,8 @@ function buildGridSVG(cellIndices, layout) {
       const idx     = row * cols + col;
       const pIdx    = cellIndices[idx];
       const color   = PALETTE[pIdx];
-      const num     = pIdx + 1;
-      const isWhite = pIdx === 24;
+      const num     = pIdx;      // number shown = palette index (1–24; 0 = blank)
+      const isWhite = pIdx === 0; // index 0 = white = blank cell
       draw(svg, col, row, cellW, cellH, color, num, isWhite, true, true); // forceWhite=true, withNumber=true
     }
   }
@@ -684,7 +683,7 @@ function buildMosaicSVG(cellIndices, layout) {
       const idx   = row * cols + col;
       const pIdx  = cellIndices[idx];
       const color = PALETTE[pIdx];
-      draw(svg, col, row, cellW, cellH, color, 0, pIdx === 24, false);
+      draw(svg, col, row, cellW, cellH, color, 0, pIdx === 0, false);
     }
   }
 
@@ -712,8 +711,8 @@ function computeGridHeight(layout) {
 
 // ─── Cell Draw Functions ──────────────────────────────────────────────────────
 
-// Number label: 30% black per client spec = K30 in CMYK = rgb(179,179,179) approx
-// White cells (palette index 24) get NO number — left blank
+// Number label: 30% black per client spec
+// White cells (palette index 0) get NO number — left blank
 const NUM_COLOR    = '#4d4d4d'; // 30% black
 const BORDER_COLOR = '#000000'; // 100% black
 const BORDER_W     = 0.5;
@@ -904,9 +903,9 @@ function renderPaletteUI(cellIndices) {
     item.className = 'swatch-item';
     item.style.background = rgbStr(color);
     item.dataset.light = isLightColor(color) ? 'true' : 'false';
-    if (i === 24) item.style.border = '1.5px dashed #999'; // white/no-paint
-    item.title = `${i + 1}. ${color.name} — ${usage[i]} cells`;
-    item.textContent = String(i + 1).padStart(2, '0');
+    if (i === 0) item.style.border = '1.5px dashed #999'; // white = index 0
+    item.title = `${i === 0 ? 0 : i}. ${color.name} — ${usage[i]} cells`;
+    item.textContent = i === 0 ? '0' : String(i).padStart(2, '0');
     colorPalette.appendChild(item);
   });
 }
