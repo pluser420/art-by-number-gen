@@ -101,17 +101,15 @@ const MIN_IMG_WIDTH  = 40;
 const MIN_IMG_HEIGHT = 60;
 const LEGEND_COLS    = 5;
 
-// Grid detail scale factors (slider value 1–5)
-// Each layout's base cols/rows are multiplied by this scale
-const DETAIL_SCALES = [0.4, 0.65, 1.0, 1.5, 2.0];
-const DETAIL_LABELS = ['Very Coarse', 'Coarse', 'Normal', 'Fine', 'Very Fine'];
+// Grid detail scale factors removed — grid is now controlled by direct cols/rows inputs
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentFile      = null;
 let currentImg       = null;
 let currentBaseName  = 'image';
 let selectedLayout   = 'squares';
-let selectedDetail   = 3; // slider value 1–5, index = value-1
+let customCols       = 40;
+let customRows       = 60;
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const fileInput       = document.getElementById('fileInput');
@@ -124,7 +122,8 @@ const errorBanner     = document.getElementById('errorBanner');
 const errorText       = document.getElementById('errorText');
 const dismissError    = document.getElementById('dismissError');
 const layoutSelect    = document.getElementById('layoutSelect');
-const pixelSlider     = document.getElementById('pixelSlider');
+const colsInput       = document.getElementById('colsInput');
+const rowsInput       = document.getElementById('rowsInput');
 const pixelInfo       = document.getElementById('pixelInfo');
 const generateBtn     = document.getElementById('generateBtn');
 const loadingOverlay  = document.getElementById('loadingOverlay');
@@ -148,23 +147,39 @@ Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
 
 layoutSelect.addEventListener('change', () => {
   selectedLayout = layoutSelect.value;
+  // Reset cols/rows to the base defaults for the chosen layout
+  const base = GRID_LAYOUTS[selectedLayout];
+  colsInput.value = base.cols;
+  rowsInput.value = base.rows;
+  customCols = base.cols;
+  customRows = base.rows;
   updatePixelInfo();
 });
 
-// ─── Pixel detail slider ──────────────────────────────────────────────────────
+// ─── Grid size number inputs ──────────────────────────────────────────────────
 
-function updatePixelInfo() {
-  const scale  = DETAIL_SCALES[selectedDetail - 1];
-  const base   = GRID_LAYOUTS[selectedLayout];
-  const cols   = Math.max(4, Math.round(base.cols * scale));
-  const rows   = Math.max(4, Math.round(base.rows * scale));
-  pixelInfo.textContent = `${DETAIL_LABELS[selectedDetail - 1]} — ${cols} × ${rows} cells`;
+function clampGridValue(val, min, max) {
+  return Math.min(max, Math.max(min, Math.round(val)));
 }
 
-pixelSlider.addEventListener('input', () => {
-  selectedDetail = parseInt(pixelSlider.value, 10);
+function updatePixelInfo() {
+  pixelInfo.textContent = `${customCols} × ${customRows} cells`;
+}
+
+function onGridInputChange(input, isCol) {
+  const raw = parseInt(input.value, 10);
+  if (isNaN(raw)) return;
+  const clamped = clampGridValue(raw, 4, 200);
+  input.value = clamped;
+  if (isCol) customCols = clamped;
+  else customRows = clamped;
   updatePixelInfo();
-});
+}
+
+colsInput.addEventListener('input',  () => onGridInputChange(colsInput, true));
+colsInput.addEventListener('change', () => onGridInputChange(colsInput, true));
+rowsInput.addEventListener('input',  () => onGridInputChange(rowsInput, false));
+rowsInput.addEventListener('change', () => onGridInputChange(rowsInput, false));
 
 updatePixelInfo();
 
@@ -268,13 +283,15 @@ async function runPipeline() {
 
   try {
     const baseLayout = GRID_LAYOUTS[selectedLayout];
-    const scale = DETAIL_SCALES[selectedDetail - 1];
 
-    // Build a scaled layout — cols/rows adjusted, cell sizes adjusted inversely
-    const cols  = Math.max(4, Math.round(baseLayout.cols * scale));
-    const rows  = Math.max(4, Math.round(baseLayout.rows * scale));
-    const cellW = Math.round(baseLayout.cellW / scale);
-    const cellH = Math.round(baseLayout.cellH / scale);
+    // Use the user-specified cols/rows; derive cell size to match
+    const cols  = customCols;
+    const rows  = customRows;
+    // Keep cell aspect ratio from the base layout, scaled to fit the new grid
+    const scaleW = baseLayout.cols / cols;
+    const scaleH = baseLayout.rows / rows;
+    const cellW  = Math.max(4, Math.round(baseLayout.cellW * scaleW));
+    const cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
     const layout = { ...baseLayout, cols, rows, cellW, cellH };
 
     setLoading(true, 'Mapping to palette…');
@@ -476,8 +493,7 @@ function buildMosaicSVG(cellIndices, layout) {
 
 function computeGridWidth(layout) {
   const { cols, cellW } = layout;
-  if (layout === GRID_LAYOUTS.hexagons) {
-    // flat-top: cols * 0.75 steps + the remaining 0.25 for the last col
+  if (layout.label === 'Hexagons') {
     return Math.round(cols * cellW * 0.75 + cellW * 0.25);
   }
   return cols * cellW;
@@ -485,8 +501,7 @@ function computeGridWidth(layout) {
 
 function computeGridHeight(layout) {
   const { rows, cellH } = layout;
-  if (layout === GRID_LAYOUTS.hexagons) {
-    // flat-top: rows * 0.75 vertical steps + 0.25 for the last row + 0.375 for odd-col offset
+  if (layout.label === 'Hexagons') {
     return Math.round(rows * cellH * 0.75 + cellH * 0.625);
   }
   return rows * cellH;

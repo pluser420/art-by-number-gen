@@ -50,13 +50,19 @@
         </select>
       </div>
 
-      <!-- Pixel density control -->
-      <div class="layout-row pixel-row">
-        <label class="layout-label" for="pixelSlider">Grid Detail</label>
-        <div class="slider-wrap">
-          <span class="slider-hint">Coarse</span>
-          <input type="range" id="pixelSlider" min="1" max="5" step="1" value="3" />
-          <span class="slider-hint">Fine</span>
+      <!-- Grid size controls -->
+      <div class="layout-row grid-size-row">
+        <label class="layout-label">Grid Size</label>
+        <div class="grid-size-inputs">
+          <div class="grid-size-field">
+            <label class="grid-size-label" for="colsInput">Columns</label>
+            <input type="number" id="colsInput" class="grid-size-input" min="4" max="200" value="40" />
+          </div>
+          <span class="grid-size-sep">×</span>
+          <div class="grid-size-field">
+            <label class="grid-size-label" for="rowsInput">Rows</label>
+            <input type="number" id="rowsInput" class="grid-size-input" min="4" max="200" value="60" />
+          </div>
         </div>
         <span class="pixel-info" id="pixelInfo"></span>
       </div>
