@@ -24,6 +24,8 @@
         <div class="drop-zone" id="dropZone">
           <p class="drop-main">Drop an image here</p>
           <p class="drop-hint">JPG or PNG · max 20 MB · min 40×60 px</p>
+          <!-- file input BEFORE script runs so getElementById finds it -->
+          <input type="file" id="fileInput" accept="image/jpeg,image/png" style="display:none;" />
           <button class="btn btn-browse" id="browseBtn" type="button">Browse files</button>
         </div>
 
@@ -128,9 +130,6 @@
   </main>
 
   <script src="asset/app.js"></script>
-
-  <!-- Hidden file input — outside any container so .click() works in all browsers -->
-  <input type="file" id="fileInput" accept="image/jpeg,image/png" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px;" />
 
   <!-- Color editor popup -->
   <div class="color-editor-backdrop" id="colorEditorBackdrop" style="display:none;"></div>
