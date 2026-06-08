@@ -139,6 +139,9 @@ const paletteCard      = document.getElementById('paletteCard');
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
+// Render the full palette on page load
+renderPaletteUI([]);
+
 // ─── Color Editor ─────────────────────────────────────────────────────────────
 
 const colorEditor        = document.getElementById('colorEditor');
@@ -400,7 +403,6 @@ function handleFile(file) {
       previewPanel.style.display = 'flex';
       generateBtn.disabled       = false;
       resultsSection.style.display = 'none';
-      paletteCard.style.display    = 'none';
     };
     img.src = e.target.result;
   };
@@ -797,7 +799,6 @@ function appendLegend(svg, offsetY, svgW, itemH) {
 // ─── Palette UI ───────────────────────────────────────────────────────────────
 
 function isLightColor({ r, g, b }) {
-  // perceived luminance — use dark text on light swatches
   return (0.299 * r + 0.587 * g + 0.114 * b) > 160;
 }
 
@@ -806,14 +807,17 @@ function renderPaletteUI(cellIndices) {
 
   const usage = new Array(PALETTE.length).fill(0);
   cellIndices.forEach(i => usage[i]++);
+  const hasResults = cellIndices.length > 0;
 
   PALETTE.forEach((color, i) => {
     const item = document.createElement('div');
     item.className = 'swatch-item';
     item.style.background = rgbStr(color);
     item.dataset.light = isLightColor(color) ? 'true' : 'false';
-    if (i === 0) item.style.border = '1.5px dashed #999'; // white = index 0
-    item.title = `${i === 0 ? 0 : i}. ${color.name} — ${usage[i]} cells`;
+    if (i === 0) item.style.border = '1.5px dashed #999';
+    // Dim unused colors after generation
+    if (hasResults && usage[i] === 0) item.style.opacity = '0.25';
+    item.title = `${i === 0 ? 0 : i}. ${color.name}${hasResults ? ` — ${usage[i]} cells` : ''}`;
     item.textContent = i === 0 ? '0' : String(i).padStart(2, '0');
     colorPalette.appendChild(item);
   });
@@ -896,7 +900,6 @@ function clearAll() {
 
   previewPanel.style.display   = 'none';
   resultsSection.style.display = 'none';
-  paletteCard.style.display    = 'none';
   generateBtn.disabled         = true;
 
   hideError();
