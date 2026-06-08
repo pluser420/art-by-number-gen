@@ -100,13 +100,6 @@ const GRID_LAYOUTS = {
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
-  rectangles: {
-    label: 'Rectangles (Wide)',
-    cols: 40, rows: 60,
-    cellW: 36, cellH: 18,  // 2:1 landscape aspect ratio
-    draw: drawRectCell,
-    sample: sampleSquare,
-  },
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -446,12 +439,6 @@ async function runPipeline() {
       const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
       cellW = cellSize;
       cellH = cellSize;
-    }
-
-    // For rectangles, preserve the 2:1 aspect ratio
-    if (selectedLayout === 'rectangles') {
-      cellW = Math.max(4, Math.round(baseLayout.cellW * scaleW));
-      cellH = Math.max(2, Math.round(cellW / 2));
     }
 
     // For iso triangles, preserve equilateral ratio: cellH = cellW * √3/2
