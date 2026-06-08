@@ -93,11 +93,18 @@ const GRID_LAYOUTS = {
     sample: sampleSquare,
   },
   ogee: {
-    label: 'Ogee (Fish Scale)',
+    label: 'Ogee (Octagon)',
     cols: 40, rows: 60,
-    cellW: 28, cellH: 20,
+    cellW: 28, cellH: 28,
     draw: drawOgeeCell,
     sample: sampleSquare,
+  },
+  isotriangles: {
+    label: 'Iso Triangles',
+    cols: 40, rows: 40,
+    cellW: 24, cellH: 14,  // cH = cW * √3/2 ≈ 0.577 * cW
+    draw: drawIsoTriangleCell,
+    sample: sampleIsoTriangle,
   },
 };
 
@@ -622,8 +629,8 @@ function buildGridSVG(cellIndices, layout) {
   // Outer border — 100% black per client spec
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
-  // Triangle grid lines drawn last so they appear on top of everything
-  if (layout.label === 'Triangles') {
+  // Triangle/IsoTriangle grid lines drawn last
+  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
 
@@ -650,8 +657,8 @@ function buildMosaicSVG(cellIndices, layout) {
 
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
-  // Triangle grid lines drawn last so they appear on top of everything
-  if (layout.label === 'Triangles') {
+  // Triangle/IsoTriangle grid lines drawn last
+  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
 
@@ -668,7 +675,7 @@ function computeGridWidth(layout) {
     const s = layout.cellH / 2;
     return Math.round(cols * s * Math.sqrt(3) + s * Math.sqrt(3) / 2);
   }
-  if (layout.label === 'Triangles') {
+  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
     const lastCol = cols - 1;
     return Math.round(lastCol % 2 === 0
       ? 0.5 * lastCol * cellW + cellW
@@ -918,6 +925,51 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
     const cy = y0 + cH / 2;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.3))));
   }
+}
+
+/** Isometric triangle cell — equilateral triangles, proper aspect ratio.
+ *  Even col = up▲, odd col = down▽.
+ *  Uses same formula as triangle layout but with equilateral proportions.
+ *  Fill only + separate grid line pass.
+ */
+function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
+  const y0   = row * cH;
+  const isUp = col % 2 === 0;
+  const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const o    = 0.5;
+
+  // Use user formula: up▲ left=0.5*c*cW, apex=0.5*c*cW+cW/2, right=0.5*c*cW+cW
+  //                  down▽ left=0.5*c*cW, apex=0.5*(1+c)*cW, right=0.5*(2+c)*cW
+  let xL, xA, xR, cx, cy;
+  if (isUp) {
+    xL = 0.5 * col * cW;
+    xA = 0.5 * col * cW + cW / 2;
+    xR = 0.5 * col * cW + cW;
+    cx = xA; cy = y0 + cH * 0.65;
+  } else {
+    xL = 0.5 * col * cW;
+    xA = 0.5 * (1 + col) * cW;
+    xR = 0.5 * (2 + col) * cW;
+    cx = xA; cy = y0 + cH * 0.38;
+  }
+
+  const pts = isUp
+    ? `${xL - o},${y0 + cH + o} ${xA},${y0 - o} ${xR + o},${y0 + cH + o}`
+    : `${xL - o},${y0 - o} ${xR + o},${y0 - o} ${xA},${y0 + cH + o}`;
+
+  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  poly.setAttribute('points', pts);
+  poly.setAttribute('fill', fill);
+  poly.setAttribute('stroke', 'none');
+  svg.appendChild(poly);
+
+  if (withNumber && !isWhite) {
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.22))));
+  }
+}
+
+function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
+  return sampleTriangle(ctx, imgW, imgH, col, row, cols, rows);
 }
 
 /** Diamond cell — interlocking tiling.
