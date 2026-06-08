@@ -101,8 +101,8 @@ const GRID_LAYOUTS = {
   },
   isotriangles: {
     label: 'Iso Triangles',
-    cols: 40, rows: 40,
-    cellW: 24, cellH: 14,  // cH = cW * √3/2 ≈ 0.577 * cW
+    cols: 60, rows: 40,
+    cellW: 24, cellH: 14,  // cH ≈ cW * √3/2 for equilateral triangles
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
@@ -675,11 +675,14 @@ function computeGridWidth(layout) {
     const s = layout.cellH / 2;
     return Math.round(cols * s * Math.sqrt(3) + s * Math.sqrt(3) / 2);
   }
-  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
+  if (layout.label === 'Triangles') {
     const lastCol = cols - 1;
     return Math.round(lastCol % 2 === 0
       ? 0.5 * lastCol * cellW + cellW
       : 0.5 * (2 + lastCol) * cellW);
+  }
+  if (layout.label === 'Iso Triangles') {
+    return Math.round(cols * cellW);
   }
   if (layout.label === 'Diamonds') {
     // Odd rows shift right by cW/2 extra, so max right = cols*cW + cW/2
@@ -928,34 +931,21 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
 }
 
 /** Isometric triangle cell — equilateral triangles, proper aspect ratio.
- *  Even col = up▲, odd col = down▽.
- *  Uses same formula as triangle layout but with equilateral proportions.
- *  Fill only + separate grid line pass.
+ *  Simple tiling: even col = up▲, odd col = down▽, all same row.
+ *  Each cell is cW wide × cH tall (cH should be cW*√3/2 for equilateral).
+ *  Uses simple column*cW positioning — no half-step offset.
  */
 function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
+  const x0   = col * cW;
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
+  const midX = x0 + cW / 2;
   const o    = 0.5;
 
-  // Use user formula: up▲ left=0.5*c*cW, apex=0.5*c*cW+cW/2, right=0.5*c*cW+cW
-  //                  down▽ left=0.5*c*cW, apex=0.5*(1+c)*cW, right=0.5*(2+c)*cW
-  let xL, xA, xR, cx, cy;
-  if (isUp) {
-    xL = 0.5 * col * cW;
-    xA = 0.5 * col * cW + cW / 2;
-    xR = 0.5 * col * cW + cW;
-    cx = xA; cy = y0 + cH * 0.65;
-  } else {
-    xL = 0.5 * col * cW;
-    xA = 0.5 * (1 + col) * cW;
-    xR = 0.5 * (2 + col) * cW;
-    cx = xA; cy = y0 + cH * 0.38;
-  }
-
   const pts = isUp
-    ? `${xL - o},${y0 + cH + o} ${xA},${y0 - o} ${xR + o},${y0 + cH + o}`
-    : `${xL - o},${y0 - o} ${xR + o},${y0 - o} ${xA},${y0 + cH + o}`;
+    ? `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`
+    : `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -964,12 +954,16 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.22))));
+    const cy = isUp ? y0 + cH * 0.65 : y0 + cH * 0.38;
+    svg.appendChild(text(midX, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.22))));
   }
 }
 
 function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
-  return sampleTriangle(ctx, imgW, imgH, col, row, cols, rows);
+  const isUp = col % 2 === 0;
+  const cx = ((col + 0.5) / cols) * imgW;
+  const cy = isUp ? ((row + 0.67) / rows) * imgH : ((row + 0.33) / rows) * imgH;
+  return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
 /** Diamond cell — interlocking tiling.
