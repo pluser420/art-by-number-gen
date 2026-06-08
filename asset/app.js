@@ -926,7 +926,7 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
   for (let row = 0; row < rows; row++) {
     const yT     = row * cH;
     const yB     = (row + 1) * cH;
-    const rowOff = row % 2 === 1 ? -cW : 0;
+    const rowOff = row % 2 === 1 ? cW / 2 : 0;
     for (let col = 0; col < cols; col++) {
       const xL   = col * (cW / 2) + rowOff;
       const xMid = xL + cW / 2;
@@ -1022,7 +1022,7 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
  */
 function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const isUp   = col % 2 === 0;
-  const rowOff = row % 2 === 1 ? -cW : 0;  // odd rows shift left by cW
+  const rowOff = row % 2 === 1 ? cW / 2 : 0;  // odd rows shift right by cW/2
   const xL     = col * (cW / 2) + rowOff;
   const xR     = xL + cW;
   const xMid   = xL + cW / 2;
@@ -1050,7 +1050,7 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
 
 function sampleIsoTriangle(ctx, imgW, imgH, col, row, cols, rows) {
   const isUp   = col % 2 === 0;
-  const rowOff = row % 2 === 1 ? -1 : 0;  // normalized: odd rows shift left by one base unit
+  const rowOff = row % 2 === 1 ? 0.5 : 0;  // normalized: odd rows shift right by cW/2
   // x center: col*(0.5/cols) + rowOff*(1/cols) + 0.5/cols (mid of triangle)
   const totalW = cols * 0.5 + 0.5; // in base units
   const xUnit  = col * 0.5 + 0.5 + rowOff;  // center x in base units
