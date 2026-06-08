@@ -34,8 +34,8 @@ const PALETTE = [
   { name: 'Sky Blue',     r:   0, g: 150, b: 227 }, // 13 #0096E3
   { name: 'Light Blue',   r: 179, g: 221, b: 234 }, // 14 #B3DDEA
   { name: 'Lavender',     r: 233, g: 208, b: 247 }, // 15 #E9D0F7
-  { name: 'Peach',        r: 255, g: 227, b: 205 }, // 16 #FFE3CD
-  { name: 'Light Pink',   r: 243, g: 183, b: 191 }, // 17 #F3B7BF
+  { name: 'Light Pink',   r: 243, g: 183, b: 191 }, // 16 #F3B7BF  ← swapped
+  { name: 'Peach',        r: 255, g: 227, b: 205 }, // 17 #FFE3CD  ← swapped
   { name: 'Tan',          r: 235, g: 171, b: 127 }, // 18 #EBAB7F
   { name: 'Amber',        r: 183, g: 113, b:   2 }, // 19 #B77102
   { name: 'Brown',        r: 141, g: 105, b:  68 }, // 20 #8D6944
