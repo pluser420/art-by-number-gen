@@ -623,14 +623,30 @@ function buildGridSVG(cellIndices, layout) {
   // White background
   svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
 
+  // For Iso Triangles, use a clipPath so odd-row overflow is clipped to grid bounds
+  let cellParent = svg;
+  if (layout.label === 'Iso Triangles') {
+    const clipId = 'isoClip';
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    clip.setAttribute('id', clipId);
+    clip.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#000'));
+    defs.appendChild(clip);
+    svg.appendChild(defs);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('clip-path', `url(#${clipId})`);
+    svg.appendChild(g);
+    cellParent = g;
+  }
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const idx     = row * cols + col;
       const pIdx    = cellIndices[idx];
       const color   = PALETTE[pIdx];
-      const num     = pIdx;      // number shown = palette index (1–24; 0 = blank)
-      const isWhite = pIdx === 0; // index 0 = white = blank cell
-      draw(svg, col, row, cellW, cellH, color, num, isWhite, true, true); // forceWhite=true, withNumber=true
+      const num     = pIdx;
+      const isWhite = pIdx === 0;
+      draw(cellParent, col, row, cellW, cellH, color, num, isWhite, true, true);
     }
   }
 
@@ -667,12 +683,28 @@ function buildMosaicSVG(cellIndices, layout) {
   // White background — covers uncovered corners for triangle layout
   svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
 
+  // For Iso Triangles, use a clipPath so odd-row overflow is clipped to grid bounds
+  let cellParent = svg;
+  if (layout.label === 'Iso Triangles') {
+    const clipId = 'isoClipM';
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    clip.setAttribute('id', clipId);
+    clip.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#000'));
+    defs.appendChild(clip);
+    svg.appendChild(defs);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('clip-path', `url(#${clipId})`);
+    svg.appendChild(g);
+    cellParent = g;
+  }
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const idx   = row * cols + col;
       const pIdx  = cellIndices[idx];
       const color = PALETTE[pIdx];
-      draw(svg, col, row, cellW, cellH, color, 0, pIdx === 0, false);
+      draw(cellParent, col, row, cellW, cellH, color, 0, pIdx === 0, false);
     }
   }
 
@@ -708,8 +740,8 @@ function computeGridWidth(layout) {
       : 0.5 * (2 + lastCol) * cellW);
   }
   if (layout.label === 'Iso Triangles') {
-    // Each col steps cW/2; last triangle right edge = cols*(cW/2) + cW/2
-    return Math.round(cols * (layout.cellW / 2) + layout.cellW / 2);
+    // Even rows: cols*(cW/2) + cW/2; odd rows shift right cW/2 extra
+    return Math.round(cols * (layout.cellW / 2) + layout.cellW);
   }
   if (layout.label === 'Diamonds') {
     // Odd rows shift right by cW/2 extra, so max right = cols*cW + cW/2
@@ -914,7 +946,7 @@ function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
     svg.appendChild(el);
   }
 
-  const totalW = cols * (cW / 2) + cW / 2;
+  const totalW = cols * (cW / 2) + cW;  // extra cW/2 for odd row right overflow
   const totalH = rows * cH;
 
   // Horizontal lines at every row boundary
