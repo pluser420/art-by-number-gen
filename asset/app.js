@@ -570,6 +570,18 @@ function nearestPaletteIndex(r, g, b) {
     const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
     if (d < bestDist) { bestDist = d; best = i; }
   }
+  // Only use white (index 0) if the pixel is very close to pure white (within 30 per channel)
+  if (best === 0 && (255 - r > 30 || 255 - g > 30 || 255 - b > 30)) {
+    // Find best non-white color
+    let best2 = 1, bestDist2 = Infinity;
+    for (let i = 1; i < PALETTE.length; i++) {
+      if (!enabledColors.has(i)) continue;
+      const p = PALETTE[i];
+      const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
+      if (d < bestDist2) { bestDist2 = d; best2 = i; }
+    }
+    return best2;
+  }
   return best;
 }
 
