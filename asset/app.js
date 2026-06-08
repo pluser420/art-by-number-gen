@@ -618,10 +618,10 @@ function buildGridSVG(cellIndices, layout) {
   const gridPixelH = computeGridHeight(layout);
 
   // Pre-calculate legend height so we can size the SVG correctly up front
+  // Legend is always 25 entries (01–25) in 5 columns × 5 rows
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendRows  = Math.ceil(PALETTE.filter((_, i) => enabledColors.has(i)).length / LEGEND_COLS);
-  const legendH     = legendRows * legendItemH + legendPad * 2;
+  const legendH     = 5 * legendItemH + legendPad * 2;
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -662,10 +662,10 @@ function buildMosaicSVG(cellIndices, layout) {
   const gridPixelH = computeGridHeight(layout);
 
   // Pre-calculate legend height
+  // Legend is always 25 entries (01–25) in 5 columns × 5 rows
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendRows  = Math.ceil(PALETTE.filter((_, i) => enabledColors.has(i)).length / LEGEND_COLS);
-  const legendH     = legendRows * legendItemH + legendPad * 2;
+  const legendH     = 5 * legendItemH + legendPad * 2;
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -1069,13 +1069,19 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
 }
 
 // ─── Legend Builder ───────────────────────────────────────────────────────────
-// 5-column layout: color swatch + zero-padded number + color name
+// 5-column layout, numbers 01–25 sorted in order.
+// Display order: 01=palette[1], 02=palette[2], …, 24=palette[24], 25=palette[0] (white).
+// Each entry: color swatch on the left, zero-padded number on the right.
 // Appended directly below the grid, white background, black border.
 
 function appendLegend(svg, offsetY, svgW) {
-  const allIndices  = PALETTE.map((_, i) => i).filter(i => enabledColors.has(i));
-  const legendCols  = LEGEND_COLS;
-  const legendRows  = Math.ceil(allIndices.length / legendCols);
+  // Build the ordered list: 01→24 are palette indices 1–24, 25 is palette index 0 (white)
+  const orderedIndices = [];
+  for (let i = 1; i <= 24; i++) orderedIndices.push(i); // 01–24
+  orderedIndices.push(0);                                 // 25 = white
+
+  const legendCols = LEGEND_COLS; // 5
+  const legendRows = Math.ceil(orderedIndices.length / legendCols); // 5
   const itemH   = 20;
   const padX    = 16;
   const padTop  = 14;
@@ -1089,16 +1095,18 @@ function appendLegend(svg, offsetY, svgW) {
   // Legend background + border
   svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1.5));
 
-  allIndices.forEach((paletteIdx, pos) => {
-    const color = PALETTE[paletteIdx];
-    const col   = pos % legendCols;
-    const row   = Math.floor(pos / legendCols);
-    const lx    = padX + col * colW;
-    const ly    = startY + row * itemH;
-    const midY  = ly + swatchH / 2;
+  orderedIndices.forEach((paletteIdx, pos) => {
+    const color     = PALETTE[paletteIdx];
+    const col       = pos % legendCols;
+    const row       = Math.floor(pos / legendCols);
+    const lx        = padX + col * colW;
+    const ly        = startY + row * itemH;
+    const midY      = ly + swatchH / 2;
+    const displayNum = pos + 1; // 1–25
 
-    // Color swatch
-    const sw = rect(lx, ly, swatchW, swatchH, rgbStr(color), '#000000', 0.5);
+    // Color swatch (white cell gets a border so it's visible)
+    const swatchBorder = paletteIdx === 0 ? '#999999' : '#000000';
+    const sw = rect(lx, ly, swatchW, swatchH, rgbStr(color), swatchBorder, 0.5);
     svg.appendChild(sw);
 
     // Number label (e.g. "01")
@@ -1110,7 +1118,7 @@ function appendLegend(svg, offsetY, svgW) {
     numLbl.setAttribute('font-weight', 'bold');
     numLbl.setAttribute('dominant-baseline', 'central');
     numLbl.setAttribute('fill', '#111111');
-    numLbl.textContent = String(paletteIdx === 0 ? 25 : paletteIdx).padStart(2, '0');
+    numLbl.textContent = String(displayNum).padStart(2, '0');
     svg.appendChild(numLbl);
   });
 
