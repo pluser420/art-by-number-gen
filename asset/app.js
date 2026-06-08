@@ -660,6 +660,10 @@ function computeGridWidth(layout) {
       ? 0.5 * lastCol * cellW + cellW
       : 0.5 * (2 + lastCol) * cellW);
   }
+  if (layout.label === 'Diamonds') {
+    // Odd rows shift right by cW/2 extra, so max right = cols*cW + cW/2
+    return Math.round(cols * cellW + cellW / 2);
+  }
   return cols * cellW;
 }
 
@@ -667,6 +671,10 @@ function computeGridHeight(layout) {
   const { rows, cellH } = layout;
   if (layout.label === 'Hexagons') {
     return Math.round(rows * cellH * 0.75 + cellH * 0.625);
+  }
+  if (layout.label === 'Diamonds') {
+    // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
+    return Math.round(0.5 * cellH * rows + cellH / 2);
   }
   return rows * cellH;
 }
