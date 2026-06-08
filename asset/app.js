@@ -516,12 +516,19 @@ function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
   return samplePoint(ctx, Math.round(nx * imgW), Math.round(ny * imgH));
 }
 
-/** Sample center of triangle cell */
+/** Sample center of triangle cell using new formula */
 function sampleTriangle(ctx, imgW, imgH, col, row, cols, rows) {
   const isUp = col % 2 === 0;
-  // Apex X = (col+1)*0.5/cols * imgW for up▲, col*0.5/cols for down▽
-  const apexX = isUp ? (col + 1) * 0.5 / cols : col * 0.5 / cols;
-  const cx = apexX * imgW;
+  let xA;
+  if (isUp) {
+    xA = 0.5 * col + 0.5; // apex x in col units
+  } else {
+    xA = 0.5 * (1 + col); // apex x in col units
+  }
+  const totalCols = (cols % 2 === 0)
+    ? 0.5 * (cols - 1) + 1.0
+    : 0.5 * (2 + cols - 1);
+  const cx = (xA / totalCols) * imgW;
   const cy = isUp
     ? ((row + 0.67) / rows) * imgH
     : ((row + 0.33) / rows) * imgH;
@@ -636,8 +643,10 @@ function computeGridWidth(layout) {
     return Math.round(cols * cellW * 0.75 + cellW * 0.25);
   }
   if (layout.label === 'Triangles') {
-    // cols * cW — down▽ triangles overlap within the same width
-    return Math.round(cols * cellW);
+    const lastCol = cols - 1;
+    return Math.round(lastCol % 2 === 0
+      ? 0.5 * lastCol * cellW + cellW
+      : 0.5 * (2 + lastCol) * cellW);
   }
   return cols * cellW;
 }
@@ -717,30 +726,34 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — gapless tiling.
- *  Up▲ at even cols, Down▽ at odd cols shifted left by cW/2.
- *  Fill only with overshoot. Grid lines drawn in post-pass.
+/** Triangle cell — user-defined formula.
+ *  Up▲:   left=0.5*c*cW, apex=0.5*c*cW+cW/2, right=0.5*c*cW+cW
+ *  Down▽: left=0.5*c*cW, apex=0.5*(1+c)*cW,  right=0.5*(2+c)*cW
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const y0   = row * cH;
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
-  const o    = 1.5; // overshoot to fully seal gaps
+  const o    = 0.5;
 
-  let pts, cx, cy;
+  let xL, xA, xR, cx, cy;
   if (isUp) {
-    const x0   = col * cW;
-    const midX = x0 + cW / 2;
-    pts = `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`;
-    cx  = midX;
-    cy  = y0 + cH * 0.65;
+    xL = 0.5 * col * cW;
+    xA = 0.5 * col * cW + cW / 2;
+    xR = 0.5 * col * cW + cW;
+    cx = xA;
+    cy = y0 + cH * 0.65;
   } else {
-    const x0   = col * cW - cW / 2;
-    const midX = x0 + cW / 2;
-    pts = `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
-    cx  = midX;
-    cy  = y0 + cH * 0.38;
+    xL = 0.5 * col * cW;
+    xA = 0.5 * (1 + col) * cW;
+    xR = 0.5 * (2 + col) * cW;
+    cx = xA;
+    cy = y0 + cH * 0.38;
   }
+
+  const pts = isUp
+    ? `${xL - o},${y0 + cH + o} ${xA},${y0 - o} ${xR + o},${y0 + cH + o}`
+    : `${xL - o},${y0 - o} ${xR + o},${y0 - o} ${xA},${y0 + cH + o}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
@@ -764,7 +777,11 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
     svg.appendChild(el);
   }
 
-  const totalW = cols * cW;
+  // Total width = rightmost point of last up▲ (even) or down▽ (odd) column
+  const lastCol = cols - 1;
+  const totalW = lastCol % 2 === 0
+    ? 0.5 * lastCol * cW + cW          // last is up▲: right = 0.5*c*cW + cW
+    : 0.5 * (2 + lastCol) * cW;        // last is down▽: right = 0.5*(2+c)*cW
 
   // Horizontal lines at every row boundary
   for (let row = 0; row <= rows; row++) {
@@ -775,18 +792,19 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
   for (let row = 0; row < rows; row++) {
     const y0 = row * cH;
     for (let col = 0; col < cols; col++) {
+      let xL, xA, xR;
       if (col % 2 === 0) {
-        // Up▲
-        const x0   = col * cW;
-        const midX = x0 + cW / 2;
-        line(x0,   y0 + cH, midX,    y0);
-        line(midX, y0,      x0 + cW, y0 + cH);
+        xL = 0.5 * col * cW;
+        xA = 0.5 * col * cW + cW / 2;
+        xR = 0.5 * col * cW + cW;
+        line(xL, y0 + cH, xA, y0);
+        line(xA, y0,      xR, y0 + cH);
       } else {
-        // Down▽ — shifted left by cW/2
-        const x0   = col * cW - cW / 2;
-        const midX = x0 + cW / 2;
-        line(x0,   y0,      midX,    y0 + cH);
-        line(midX, y0 + cH, x0 + cW, y0);
+        xL = 0.5 * col * cW;
+        xA = 0.5 * (1 + col) * cW;
+        xR = 0.5 * (2 + col) * cW;
+        line(xL, y0,      xA, y0 + cH);
+        line(xA, y0 + cH, xR, y0);
       }
     }
   }
