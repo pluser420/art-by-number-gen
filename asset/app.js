@@ -709,9 +709,9 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — gapless tiling.
- *  Even col = up▲, odd col = down▽.
- *  Single pass: fill + thin black stroke. No separate grid line pass needed.
+/** Triangle cell — fill only, no stroke.
+ *  Gaps eliminated by drawing pure fills with no stroke.
+ *  Diagonal grid lines drawn separately in drawTriangleGridLines().
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
@@ -722,15 +722,12 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
 
   const pts = isUp
     ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
-    : `${midX},${y0} ${x0 + cW},${y0} ${x0},${y0 + cH}`;
+    : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', '#000000');
-  poly.setAttribute('stroke-width', '0.5');
-  poly.setAttribute('stroke-linejoin', 'miter');
-  poly.setAttribute('shape-rendering', 'crispEdges');
+  poly.setAttribute('stroke', 'none'); // no stroke — eliminates all gap artifacts
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
@@ -740,9 +737,45 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   }
 }
 
-/** Draw triangle grid lines as a separate post-pass */
+/** Draw ONLY diagonal lines over the filled triangles.
+ *  Horizontal base lines are deliberately skipped — they sit exactly on row
+ *  boundaries and would be drawn twice (doubling thickness → fake gap).
+ *  Each up▲ contributes: left diagonal + right diagonal
+ *  Each down▽ contributes: left diagonal + right diagonal
+ *  (horizontals are the shared base between up▲ and down▽ — omitted)
+ */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
-  // No-op: grid lines are now drawn inline with each cell
+  const stroke = '#000000';
+  const sw     = '0.5';
+
+  function line(x1, y1, x2, y2) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    el.setAttribute('x1', x1); el.setAttribute('y1', y1);
+    el.setAttribute('x2', x2); el.setAttribute('y2', y2);
+    el.setAttribute('stroke', stroke);
+    el.setAttribute('stroke-width', sw);
+    el.setAttribute('shape-rendering', 'crispEdges');
+    svg.appendChild(el);
+  }
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x0   = col * cW;
+      const y0   = row * cH;
+      const midX = x0 + cW / 2;
+      const isUp = col % 2 === 0;
+
+      if (isUp) {
+        // Up▲: left diagonal (BL→TC) + right diagonal (TC→BR)
+        line(x0,      y0 + cH, midX,      y0);      // BL → apex
+        line(midX,    y0,      x0 + cW,   y0 + cH); // apex → BR
+      } else {
+        // Down▽: left diagonal (TL→BC) + right diagonal (BC→TR)
+        line(x0,      y0,      midX,      y0 + cH); // TL → apex
+        line(midX,    y0 + cH, x0 + cW,  y0);      // apex → TR
+      }
+    }
+  }
 }
 
 /** Circle cell — circles touch edge-to-edge with no gap */
