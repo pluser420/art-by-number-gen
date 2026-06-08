@@ -815,8 +815,6 @@ function renderPaletteUI(cellIndices) {
     item.style.background = rgbStr(color);
     item.dataset.light = isLightColor(color) ? 'true' : 'false';
     if (i === 0) item.style.border = '1.5px dashed #999';
-    // Dim unused colors after generation
-    if (hasResults && usage[i] === 0) item.style.opacity = '0.25';
     item.title = `${i === 0 ? 0 : i}. ${color.name}${hasResults ? ` — ${usage[i]} cells` : ''}`;
     item.textContent = i === 0 ? '0' : String(i).padStart(2, '0');
     colorPalette.appendChild(item);
