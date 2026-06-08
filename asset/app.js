@@ -709,9 +709,8 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   }
 }
 
-/** Triangle cell — fill only, no stroke.
- *  Gaps eliminated by drawing pure fills with no stroke.
- *  Diagonal grid lines drawn separately in drawTriangleGridLines().
+/** Triangle cell — fill only, 1px oversized to seal sub-pixel gaps.
+ *  All grid lines drawn in drawTriangleGridLines() post-pass.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
@@ -719,15 +718,16 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   const isUp = col % 2 === 0;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   const midX = x0 + cW / 2;
+  const o    = 1;
 
   const pts = isUp
-    ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
-    : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
+    ? `${x0 - o},${y0 + cH + o} ${midX},${y0 - o} ${x0 + cW + o},${y0 + cH + o}`
+    : `${x0 - o},${y0 - o} ${x0 + cW + o},${y0 - o} ${midX},${y0 + cH + o}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', 'none'); // no stroke — eliminates all gap artifacts
+  poly.setAttribute('stroke', 'none');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
@@ -737,27 +737,23 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   }
 }
 
-/** Draw ONLY diagonal lines over the filled triangles.
- *  Horizontal base lines are deliberately skipped — they sit exactly on row
- *  boundaries and would be drawn twice (doubling thickness → fake gap).
- *  Each up▲ contributes: left diagonal + right diagonal
- *  Each down▽ contributes: left diagonal + right diagonal
- *  (horizontals are the shared base between up▲ and down▽ — omitted)
- */
+/** Draw ALL triangle grid lines (diagonals + horizontals) as post-pass. */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
-  const stroke = '#000000';
-  const sw     = '0.5';
-
   function line(x1, y1, x2, y2) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     el.setAttribute('x1', x1); el.setAttribute('y1', y1);
     el.setAttribute('x2', x2); el.setAttribute('y2', y2);
-    el.setAttribute('stroke', stroke);
-    el.setAttribute('stroke-width', sw);
-    el.setAttribute('shape-rendering', 'crispEdges');
+    el.setAttribute('stroke', '#000000');
+    el.setAttribute('stroke-width', '0.5');
     svg.appendChild(el);
   }
 
+  // Horizontal lines — one per row boundary
+  for (let row = 0; row <= rows; row++) {
+    line(0, row * cH, cols * cW, row * cH);
+  }
+
+  // Diagonal lines — two per cell
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const x0   = col * cW;
@@ -766,13 +762,11 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
       const isUp = col % 2 === 0;
 
       if (isUp) {
-        // Up▲: left diagonal (BL→TC) + right diagonal (TC→BR)
-        line(x0,      y0 + cH, midX,      y0);      // BL → apex
-        line(midX,    y0,      x0 + cW,   y0 + cH); // apex → BR
+        line(x0,   y0 + cH, midX,    y0);
+        line(midX, y0,      x0 + cW, y0 + cH);
       } else {
-        // Down▽: left diagonal (TL→BC) + right diagonal (BC→TR)
-        line(x0,      y0,      midX,      y0 + cH); // TL → apex
-        line(midX,    y0 + cH, x0 + cW,  y0);      // apex → TR
+        line(x0,   y0,      midX,    y0 + cH);
+        line(midX, y0 + cH, x0 + cW, y0);
       }
     }
   }
