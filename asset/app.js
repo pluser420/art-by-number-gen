@@ -649,19 +649,13 @@ function nearestPaletteIndex(r, g, b) {
 function buildGridSVG(cellIndices, layout) {
   const { cols, rows, cellW, cellH, draw } = layout;
 
-  const legendItemH = 26;
-  const legendPadV  = 24;
-  const legendH     = Math.ceil(enabledColors.size / LEGEND_COLS) * legendItemH + legendPadV;
-  const gridPixelW  = computeGridWidth(layout);
-  const gridPixelH  = computeGridHeight(layout);
-  const totalH      = gridPixelH + legendH;
+  const gridPixelW = computeGridWidth(layout);
+  const gridPixelH = computeGridHeight(layout);
+  const svg = makeSVG(gridPixelW, gridPixelH);
 
-  const svg = makeSVG(gridPixelW, totalH);
-
-  // White background for grid area
+  // White background
   svg.appendChild(rect(0, 0, gridPixelW, gridPixelH, '#ffffff'));
 
-  // Draw each cell — all cells white background, numbers only (including white/no-paint cells)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const idx     = row * cols + col;
@@ -669,15 +663,12 @@ function buildGridSVG(cellIndices, layout) {
       const color   = PALETTE[pIdx];
       const num     = pIdx + 1;
       const isWhite = pIdx === 24;
-      draw(svg, col, row, cellW, cellH, color, num, isWhite, true, true); // forceWhite=true
+      draw(svg, col, row, cellW, cellH, color, num, isWhite, true, true); // forceWhite=true, withNumber=true
     }
   }
 
-  // Outer border — thick black, matching reference
+  // Outer border — 100% black per client spec
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
-
-  // Legend
-  appendLegend(svg, gridPixelH, gridPixelW, legendItemH);
 
   return svg;
 }
@@ -686,13 +677,7 @@ function buildMosaicSVG(cellIndices, layout) {
   const { cols, rows, cellW, cellH, draw } = layout;
   const gridPixelW = computeGridWidth(layout);
   const gridPixelH = computeGridHeight(layout);
-
-  const legendItemH = 26;
-  const legendPadV  = 24;
-  const legendH     = Math.ceil(enabledColors.size / LEGEND_COLS) * legendItemH + legendPadV;
-  const totalH      = gridPixelH + legendH;
-
-  const svg = makeSVG(gridPixelW, totalH);
+  const svg = makeSVG(gridPixelW, gridPixelH);
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -703,12 +688,7 @@ function buildMosaicSVG(cellIndices, layout) {
     }
   }
 
-  // Outer border
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
-
-  // Legend
-  appendLegend(svg, gridPixelH, gridPixelW, legendItemH);
-
   return svg;
 }
 
@@ -732,11 +712,11 @@ function computeGridHeight(layout) {
 
 // ─── Cell Draw Functions ──────────────────────────────────────────────────────
 
-// Number label: always black, zero-padded (01–25), shown in ALL cells on grid view
-// (including white/no-paint cells — user needs to know not to paint those too)
-const NUM_COLOR    = '#111111';
-const BORDER_COLOR = '#000000';
-const BORDER_W     = 0.5;  // border drawn inset so adjacent cells share edges perfectly
+// Number label: 30% black per client spec = K30 in CMYK = rgb(179,179,179) approx
+// White cells (palette index 24) get NO number — left blank
+const NUM_COLOR    = '#4d4d4d'; // 30% black
+const BORDER_COLOR = '#000000'; // 100% black
+const BORDER_W     = 0.5;
 
 /** Draw a rect that is inset by half stroke so borders don't create gaps */
 function cellRect(svg, x, y, cW, cH, fill) {
@@ -754,7 +734,8 @@ function drawSquareCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   const y    = row * cH;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
   cellRect(svg, x, y, cW, cH, fill);
-  if (withNumber) {
+  // White/no-paint cells get no number — left blank per client spec
+  if (withNumber && !isWhite) {
     svg.appendChild(text(x + cW / 2, y + cH / 2, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(cW * 0.38))));
   }
 }
@@ -791,7 +772,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   poly.setAttribute('stroke-width', BORDER_W);
   svg.appendChild(poly);
 
-  if (withNumber) {
+  if (withNumber && !isWhite) {
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
@@ -816,7 +797,7 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   poly.setAttribute('stroke-width', BORDER_W);
   svg.appendChild(poly);
 
-  if (withNumber) {
+  if (withNumber && !isWhite) {
     const cx = x + cW / 2;
     const cy = isUp ? y + cH * 0.65 : y + cH * 0.35;
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
@@ -839,7 +820,7 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   circle.setAttribute('stroke-width', BORDER_W);
   svg.appendChild(circle);
 
-  if (withNumber) {
+  if (withNumber && !isWhite) {
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(r * 0.65))));
   }
 }
@@ -859,7 +840,7 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
   poly.setAttribute('stroke-width', BORDER_W);
   svg.appendChild(poly);
 
-  if (withNumber) {
+  if (withNumber && !isWhite) {
     svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
   }
 }
