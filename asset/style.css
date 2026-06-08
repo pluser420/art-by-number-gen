@@ -204,6 +204,7 @@ header h1 {
   font-weight: 500;
   color: var(--text);
   white-space: nowrap;
+  min-width: 80px;
 }
 
 .layout-select {
@@ -222,6 +223,36 @@ header h1 {
 .layout-select:focus {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
+}
+
+/* Pixel detail slider */
+.pixel-row {
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slider-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+input[type="range"]#pixelSlider {
+  width: 160px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.pixel-info {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Actions */

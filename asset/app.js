@@ -99,13 +99,19 @@ const GRID_LAYOUTS = {
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MIN_IMG_WIDTH  = 40;
 const MIN_IMG_HEIGHT = 60;
-const LEGEND_COLS    = 5;  // swatches per row in legend
+const LEGEND_COLS    = 5;
+
+// Grid detail scale factors (slider value 1–5)
+// Each layout's base cols/rows are multiplied by this scale
+const DETAIL_SCALES = [0.4, 0.65, 1.0, 1.5, 2.0];
+const DETAIL_LABELS = ['Very Coarse', 'Coarse', 'Normal', 'Fine', 'Very Fine'];
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentFile      = null;
 let currentImg       = null;
 let currentBaseName  = 'image';
 let selectedLayout   = 'squares';
+let selectedDetail   = 3; // slider value 1–5, index = value-1
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const fileInput       = document.getElementById('fileInput');
@@ -118,6 +124,8 @@ const errorBanner     = document.getElementById('errorBanner');
 const errorText       = document.getElementById('errorText');
 const dismissError    = document.getElementById('dismissError');
 const layoutSelect    = document.getElementById('layoutSelect');
+const pixelSlider     = document.getElementById('pixelSlider');
+const pixelInfo       = document.getElementById('pixelInfo');
 const generateBtn     = document.getElementById('generateBtn');
 const loadingOverlay  = document.getElementById('loadingOverlay');
 const loadingText     = document.getElementById('loadingText');
@@ -140,7 +148,25 @@ Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
 
 layoutSelect.addEventListener('change', () => {
   selectedLayout = layoutSelect.value;
+  updatePixelInfo();
 });
+
+// ─── Pixel detail slider ──────────────────────────────────────────────────────
+
+function updatePixelInfo() {
+  const scale  = DETAIL_SCALES[selectedDetail - 1];
+  const base   = GRID_LAYOUTS[selectedLayout];
+  const cols   = Math.max(4, Math.round(base.cols * scale));
+  const rows   = Math.max(4, Math.round(base.rows * scale));
+  pixelInfo.textContent = `${DETAIL_LABELS[selectedDetail - 1]} — ${cols} × ${rows} cells`;
+}
+
+pixelSlider.addEventListener('input', () => {
+  selectedDetail = parseInt(pixelSlider.value, 10);
+  updatePixelInfo();
+});
+
+updatePixelInfo();
 
 // ─── Event Wiring ─────────────────────────────────────────────────────────────
 
@@ -241,7 +267,15 @@ async function runPipeline() {
   await tick();
 
   try {
-    const layout = GRID_LAYOUTS[selectedLayout];
+    const baseLayout = GRID_LAYOUTS[selectedLayout];
+    const scale = DETAIL_SCALES[selectedDetail - 1];
+
+    // Build a scaled layout — cols/rows adjusted, cell sizes adjusted inversely
+    const cols  = Math.max(4, Math.round(baseLayout.cols * scale));
+    const rows  = Math.max(4, Math.round(baseLayout.rows * scale));
+    const cellW = Math.round(baseLayout.cellW / scale);
+    const cellH = Math.round(baseLayout.cellH / scale);
+    const layout = { ...baseLayout, cols, rows, cellW, cellH };
 
     setLoading(true, 'Mapping to palette…');
     await tick();

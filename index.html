@@ -50,6 +50,17 @@
         </select>
       </div>
 
+      <!-- Pixel density control -->
+      <div class="layout-row pixel-row">
+        <label class="layout-label" for="pixelSlider">Grid Detail</label>
+        <div class="slider-wrap">
+          <span class="slider-hint">Coarse</span>
+          <input type="range" id="pixelSlider" min="1" max="5" step="1" value="3" />
+          <span class="slider-hint">Fine</span>
+        </div>
+        <span class="pixel-info" id="pixelInfo"></span>
+      </div>
+
       <div class="actions">
         <button class="btn btn-primary" id="generateBtn" disabled>
           Generate Paint by Numbers
