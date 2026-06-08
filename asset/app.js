@@ -148,7 +148,11 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files.length) handleFile(fileInput.files[0]);
 });
 
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', (e) => {
+  // The <label> already opens the file dialog natively — don't double-trigger
+  if (e.target.closest('label')) return;
+  fileInput.click();
+});
 
 dropZone.addEventListener('dragover', (e) => {
   e.preventDefault();
