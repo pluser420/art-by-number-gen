@@ -142,7 +142,7 @@ const paletteCard      = document.getElementById('paletteCard');
 Object.entries(GRID_LAYOUTS).forEach(([key, layout]) => {
   const opt = document.createElement('option');
   opt.value = key;
-  opt.textContent = `${layout.label} (${layout.cols}×${layout.rows})`;
+  opt.textContent = layout.label;
   layoutSelect.appendChild(opt);
 });
 
