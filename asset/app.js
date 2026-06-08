@@ -101,8 +101,8 @@ const GRID_LAYOUTS = {
   },
   isotriangles: {
     label: 'Iso Triangles',
-    cols: 60, rows: 40,
-    cellW: 24, cellH: 14,  // cH ≈ cW * √3/2 for equilateral triangles
+    cols: 80, rows: 46,
+    cellW: 16, cellH: 14,  // cH = cW * √3/2 ≈ 13.86 → 14 for equilateral triangles
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
@@ -447,6 +447,12 @@ async function runPipeline() {
       cellH = cellSize;
     }
 
+    // For iso triangles, preserve equilateral ratio: cellH = cellW * √3/2
+    if (selectedLayout === 'isotriangles') {
+      cellW = Math.max(4, Math.round(baseLayout.cellW * scaleW));
+      cellH = Math.max(3, Math.round(cellW * Math.sqrt(3) / 2));
+    }
+
     const layout = { ...baseLayout, cols, rows, cellW, cellH };
 
     setLoading(true, 'Mapping to palette…');
@@ -630,8 +636,10 @@ function buildGridSVG(cellIndices, layout) {
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
   // Triangle/IsoTriangle grid lines drawn last
-  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
+  if (layout.label === 'Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
+  } else if (layout.label === 'Iso Triangles') {
+    drawIsoTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
 
   return svg;
@@ -658,8 +666,10 @@ function buildMosaicSVG(cellIndices, layout) {
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
   // Triangle/IsoTriangle grid lines drawn last
-  if (layout.label === 'Triangles' || layout.label === 'Iso Triangles') {
+  if (layout.label === 'Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
+  } else if (layout.label === 'Iso Triangles') {
+    drawIsoTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
 
   return svg;
@@ -827,7 +837,9 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   }
 }
 
-/** Draw ALL triangle grid lines (diagonals + horizontals) as post-pass. */
+/** Draw ALL triangle grid lines (diagonals + horizontals) as post-pass.
+ *  Used only for the 'Triangles' layout (non-equilateral, offset tiling).
+ */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
   function line(x1, y1, x2, y2) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -866,6 +878,49 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
         xR = 0.5 * (2 + col) * cW;
         line(xL, y0,      xA, y0 + cH);
         line(xA, y0 + cH, xR, y0);
+      }
+    }
+  }
+}
+
+/** Draw iso-triangle grid lines for the 'Iso Triangles' layout.
+ *  Each cell is cW wide × cH tall, positioned at col*cW, row*cH.
+ *  Even cols = up▲ (apex at top-center), odd cols = down▽ (apex at bottom-center).
+ *  Grid = horizontal lines every cH + two diagonals per cell using col*cW positions.
+ */
+function drawIsoTriangleGridLines(svg, cols, rows, cW, cH) {
+  function line(x1, y1, x2, y2) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    el.setAttribute('x1', x1.toFixed(2)); el.setAttribute('y1', y1.toFixed(2));
+    el.setAttribute('x2', x2.toFixed(2)); el.setAttribute('y2', y2.toFixed(2));
+    el.setAttribute('stroke', '#000000');
+    el.setAttribute('stroke-width', '0.5');
+    svg.appendChild(el);
+  }
+
+  const totalW = cols * cW;
+  const totalH = rows * cH;
+
+  // Horizontal lines at every row boundary
+  for (let row = 0; row <= rows; row++) {
+    line(0, row * cH, totalW, row * cH);
+  }
+
+  // Diagonal lines — two per cell (left edge + right edge of each triangle)
+  for (let row = 0; row < rows; row++) {
+    const y0 = row * cH;
+    for (let col = 0; col < cols; col++) {
+      const x0   = col * cW;
+      const midX = x0 + cW / 2;
+      const isUp = col % 2 === 0;
+      if (isUp) {
+        // up▲: left-bottom → apex-top → right-bottom
+        line(x0,        y0 + cH, midX,       y0);
+        line(midX,      y0,      x0 + cW,    y0 + cH);
+      } else {
+        // down▽: left-top → apex-bottom → right-top
+        line(x0,        y0,      midX,       y0 + cH);
+        line(midX,      y0 + cH, x0 + cW,   y0);
       }
     }
   }
