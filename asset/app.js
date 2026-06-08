@@ -844,14 +844,14 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
 }
 
 /** Diamond cell — interlocking tiling.
- *  Even col: cx = col*cW + cW/2,   cy = row*cH + cH/2
- *  Odd col:  cx = (col+1)*cW/2,    cy = row*cH + cH/2
+ *  Even col: cx = col*cW + cW/2,  cy = 0.5*cH*(row+1)
+ *  Odd col:  cx = (col+1)*cW,     cy = 0.5*cH*(row+1)
  */
 function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const cx = col % 2 === 0
     ? col * cW + cW / 2
-    : (col + 1) * cW / 2;
-  const cy   = row * cH + cH / 2;
+    : (col + 1) * cW;
+  const cy   = 0.5 * cH * (row + 1);
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
 
   const pts = `${cx},${cy - cH / 2} ${cx + cW / 2},${cy} ${cx},${cy + cH / 2} ${cx - cW / 2},${cy}`;
