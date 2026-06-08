@@ -711,8 +711,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
 
 /** Triangle cell — gapless tiling.
  *  Even col = up▲, odd col = down▽.
- *  Fill with same-color stroke to eliminate sub-pixel gaps.
- *  Grid lines drawn in separate post-pass.
+ *  Single pass: fill + thin black stroke. No separate grid line pass needed.
  */
 function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
   const x0   = col * cW;
@@ -728,9 +727,10 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
   poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', fill);
-  poly.setAttribute('stroke-width', '2');
+  poly.setAttribute('stroke', '#000000');
+  poly.setAttribute('stroke-width', '0.5');
   poly.setAttribute('stroke-linejoin', 'miter');
+  poly.setAttribute('shape-rendering', 'crispEdges');
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
@@ -742,26 +742,7 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
 
 /** Draw triangle grid lines as a separate post-pass */
 function drawTriangleGridLines(svg, cols, rows, cW, cH) {
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x0   = col * cW;
-      const y0   = row * cH;
-      const isUp = col % 2 === 0;
-      const midX = x0 + cW / 2;
-
-      const pts = isUp
-        ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
-        : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
-
-      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      poly.setAttribute('points', pts);
-      poly.setAttribute('fill', 'none');
-      poly.setAttribute('stroke', '#000000');
-      poly.setAttribute('stroke-width', '0.5');
-      poly.setAttribute('stroke-linejoin', 'miter');
-      svg.appendChild(poly);
-    }
-  }
+  // No-op: grid lines are now drawn inline with each cell
 }
 
 /** Circle cell — circles touch edge-to-edge with no gap */
