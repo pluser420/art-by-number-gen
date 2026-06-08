@@ -82,7 +82,7 @@ const GRID_LAYOUTS = {
   diamonds: {
     label: 'Diamonds',
     cols: 40, rows: 120,
-    cellW: 28, cellH: 20,
+    cellW: 24, cellH: 24,  // equal W and H → 90° angles (square rotated 45°)
     draw: drawDiamondCell,
     sample: sampleSquare,
   },
@@ -435,7 +435,7 @@ async function runPipeline() {
     let cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
 
     // For square-cell layouts, enforce equal cellW and cellH so cells stay square
-    if (['squares', 'circles'].includes(selectedLayout)) {
+    if (['squares', 'circles', 'diamonds'].includes(selectedLayout)) {
       const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
       cellW = cellSize;
       cellH = cellSize;
