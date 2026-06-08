@@ -592,7 +592,7 @@ function buildGridSVG(cellIndices, layout) {
   // Outer border — 100% black per client spec
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
-  // For triangle layout, draw grid lines as a separate pass to avoid gaps
+  // Triangle grid lines drawn last so they appear on top of everything
   if (layout.label === 'Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
@@ -617,7 +617,7 @@ function buildMosaicSVG(cellIndices, layout) {
 
   svg.appendChild(rectStroke(0, 0, gridPixelW, gridPixelH, '#000000', 3));
 
-  // For triangle mosaic, draw grid lines as a separate pass
+  // Triangle grid lines drawn last so they appear on top of everything
   if (layout.label === 'Triangles') {
     drawTriangleGridLines(svg, cols, rows, cellW, cellH);
   }
@@ -767,7 +767,7 @@ function drawTriangleGridLines(svg, cols, rows, cW, cH) {
     svg.appendChild(el);
   }
 
-  // Horizontal lines — one per row boundary
+  // Horizontal lines at bottom of each up▲ row (= every row boundary)
   const totalW = (cols + 1) * half;
   for (let row = 0; row <= rows; row++) {
     line(0, row * cH, totalW, row * cH);
