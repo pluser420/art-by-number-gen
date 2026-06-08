@@ -87,9 +87,9 @@ const GRID_LAYOUTS = {
     sample: sampleSquare,
   },
   ogee: {
-    label: 'Ogee (Octagon)',
+    label: 'Ogee (Fish Scale)',
     cols: 40, rows: 60,
-    cellW: 28, cellH: 28,
+    cellW: 20, cellH: 20,
     draw: drawOgeeCell,
     sample: sampleSquare,
   },
@@ -435,7 +435,7 @@ async function runPipeline() {
     let cellH  = Math.max(4, Math.round(baseLayout.cellH * scaleH));
 
     // For square-cell layouts, enforce equal cellW and cellH so cells stay square
-    if (['squares', 'circles', 'diamonds'].includes(selectedLayout)) {
+    if (['squares', 'circles', 'diamonds', 'ogee'].includes(selectedLayout)) {
       const cellSize = Math.max(4, Math.round(baseLayout.cellW * Math.min(scaleW, scaleH)));
       cellW = cellSize;
       cellH = cellSize;
@@ -774,8 +774,8 @@ function computeGridWidth(layout) {
     return Math.round(cols * cellW + cellW / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // Simple grid — octagons sit in their own bounding boxes
-    return Math.round(cols * cellW);
+    // Odd rows offset by r=cW/2, so total width = cols*cW + cW/2
+    return Math.round(cols * cellW + cellW / 2);
   }
   return cols * cellW;
 }
@@ -792,8 +792,8 @@ function computeGridHeight(layout) {
     return Math.round(0.5 * cellH * rows + cellH / 2);
   }
   if (layout.label === 'Ogee (Fish Scale)') {
-    // Simple grid — octagons sit in their own bounding boxes
-    return Math.round(rows * cellH);
+    // vStep = cH*0.75, last center at (rows-1)*vStep + r, bottom = +r
+    return Math.round((rows - 1) * cellH * 0.75 + cellH);
   }
   return rows * cellH;
 }
@@ -1025,41 +1025,37 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   }
 }
 
-/** Ogee / Octagon+Square tiling cell.
- *  Each cell is a regular octagon drawn within cW × cH bounding box.
- *  Adjacent octagons share edges perfectly — no offset needed.
- *  The "cut" corners create small squares at the intersections.
+/** Ogee / Fish Scale / Chain-mail tiling cell.
+ *  Each cell is a circle. Adjacent circles overlap by ~50% creating the
+ *  interlocking lens pattern seen in chain-mail / fish scale grids.
+ *
+ *  Layout:
+ *   - Horizontal step  = cW          (circles touch side-to-side)
+ *   - Vertical step    = cH * 0.75   (circles overlap 25% vertically)
+ *   - Odd rows offset  = cW / 2      (brick offset)
+ *   - Radius           = cW / 2
+ *
+ *  Each circle is drawn as a full circle shape. Overlapping strokes
+ *  create the chain-link intersection lines automatically.
  */
 function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const x0   = col * cW;
-  const y0   = row * cH;
-  // Cut = 1/(2+√2) of the side length — creates a regular octagon
-  const cut  = Math.min(cW, cH) / (2 + Math.SQRT2);
+  const r    = cW / 2;
+  const vStep = cH * 0.75;                         // vertical overlap step
+  const cx   = col * cW + r + (row % 2) * r;       // odd rows offset by r
+  const cy   = row * vStep + r;
   const fill = forceWhite ? '#ffffff' : (isWhite ? '#ffffff' : rgbStr(color));
 
-  // 8 points of octagon within bounding box
-  const pts = [
-    `${x0 + cut},${y0}`,
-    `${x0 + cW - cut},${y0}`,
-    `${x0 + cW},${y0 + cut}`,
-    `${x0 + cW},${y0 + cH - cut}`,
-    `${x0 + cW - cut},${y0 + cH}`,
-    `${x0 + cut},${y0 + cH}`,
-    `${x0},${y0 + cH - cut}`,
-    `${x0},${y0 + cut}`,
-  ].join(' ');
-
-  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  poly.setAttribute('points', pts);
-  poly.setAttribute('fill', fill);
-  poly.setAttribute('stroke', BORDER_COLOR);
-  poly.setAttribute('stroke-width', BORDER_W);
-  svg.appendChild(poly);
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', cx.toFixed(2));
+  circle.setAttribute('cy', cy.toFixed(2));
+  circle.setAttribute('r',  r.toFixed(2));
+  circle.setAttribute('fill', fill);
+  circle.setAttribute('stroke', BORDER_COLOR);
+  circle.setAttribute('stroke-width', BORDER_W);
+  svg.appendChild(circle);
 
   if (withNumber && !isWhite) {
-    const cx = x0 + cW / 2;
-    const cy = y0 + cH / 2;
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.3))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(r * 0.65))));
   }
 }
 
