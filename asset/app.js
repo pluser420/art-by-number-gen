@@ -507,13 +507,11 @@ function sampleSquare(ctx, imgW, imgH, col, row, cols, rows) {
   return averageRegion(ctx, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
 }
 
-/** Sample center point for hexagon (flat-top, vertical step = cH * 0.75) */
+/** Sample center of hexagon cell — simple grid, no offset */
 function sampleHex(ctx, imgW, imgH, col, row, cols, rows) {
-  const totalW = cols * 0.75 + 0.25;
-  const totalH = rows * 0.75 + 0.625;
-  const nx = (col * 0.75 + 0.5) / totalW;
-  const ny = (row * 0.75 + (col % 2 === 1 ? 0.375 : 0) + 0.5) / totalH;
-  return samplePoint(ctx, Math.round(nx * imgW), Math.round(ny * imgH));
+  const cx = ((col + 0.5) / cols) * imgW;
+  const cy = ((row + 0.5) / rows) * imgH;
+  return samplePoint(ctx, Math.round(cx), Math.round(cy));
 }
 
 /** Sample center of triangle cell using new formula */
@@ -652,7 +650,7 @@ function buildMosaicSVG(cellIndices, layout) {
 function computeGridWidth(layout) {
   const { cols, cellW } = layout;
   if (layout.label === 'Hexagons') {
-    return Math.round(cols * cellW * 0.75 + cellW * 0.25);
+    return Math.round(cols * cellW);
   }
   if (layout.label === 'Triangles') {
     const lastCol = cols - 1;
@@ -670,7 +668,7 @@ function computeGridWidth(layout) {
 function computeGridHeight(layout) {
   const { rows, cellH } = layout;
   if (layout.label === 'Hexagons') {
-    return Math.round(rows * cellH * 0.75 + cellH * 0.625);
+    return Math.round(rows * cellH);
   }
   if (layout.label === 'Diamonds') {
     // cy of last row = 0.5*cH*rows, bottom point = 0.5*cH*rows + cH/2
@@ -721,15 +719,14 @@ function drawRectCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
  *    odd-col offset  = cH * 0.375  (half the vertical step)
  */
 function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, forceWhite) {
-  const cx = col * cW * 0.75 + cW / 2;
-  const cy = row * cH * 0.75 + (col % 2 === 1 ? cH * 0.375 : 0) + cH / 2;
-  // Expand by 0.75px so neighbouring hexes fully overlap and leave no gap
-  const rx = cW / 2 + 0.75;
-  const ry = cH / 2 + 0.75;
+  const cx = col * cW + cW / 2;
+  const cy = row * cH + cH / 2;
+  const rx = cW / 2;
+  const ry = cH / 2;
 
   const pts = [];
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i; // flat-top: first point at 0°
+    const angle = (Math.PI / 3) * i;
     pts.push(`${(cx + rx * Math.cos(angle)).toFixed(2)},${(cy + ry * Math.sin(angle)).toFixed(2)}`);
   }
 
