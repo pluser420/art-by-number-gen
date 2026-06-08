@@ -722,7 +722,7 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
 
   const pts = isUp
     ? `${x0},${y0 + cH} ${midX},${y0} ${x0 + cW},${y0 + cH}`
-    : `${x0},${y0} ${x0 + cW},${y0} ${midX},${y0 + cH}`;
+    : `${midX},${y0} ${x0 + cW},${y0} ${x0},${y0 + cH}`;
 
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   poly.setAttribute('points', pts);
