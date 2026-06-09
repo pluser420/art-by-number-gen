@@ -41,6 +41,19 @@ body {
   text-align: center;
 }
 
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.topbar-logo {
+  height: 44px;
+  width: auto;
+  flex-shrink: 0;
+}
+
 .topbar-title {
   font-size: 1.15rem;
   font-weight: 700;
