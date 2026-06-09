@@ -120,6 +120,7 @@ let customCols       = 40;
 let customRows       = 60;
 // Set of enabled palette indices (0-based). All enabled by default.
 let enabledColors    = new Set(PALETTE.map((_, i) => i));
+let lastStats        = null; // { totalCells, colorCells, timeStr }
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const fileInput        = document.getElementById('fileInput');
@@ -145,6 +146,7 @@ const downloadGrid     = document.getElementById('downloadGrid');
 const downloadMosaic   = document.getElementById('downloadMosaic');
 const colorPalette     = document.getElementById('colorPalette');
 const paletteCard      = document.getElementById('paletteCard');
+const statsCard        = document.getElementById('statsCard');
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -321,7 +323,7 @@ function updatePixelInfo() {
 function onGridInputChange(input, isCol) {
   const raw = parseInt(input.value, 10);
   if (isNaN(raw)) return;
-  const clamped = clampGridValue(raw, 4, 200);
+  const clamped = clampGridValue(raw, 1, 500);
   input.value = clamped;
   if (isCol) customCols = clamped;
   else customRows = clamped;
@@ -392,14 +394,6 @@ function handleFile(file) {
     const img = new Image();
     img.onerror = () => showError('Could not decode the image. Make sure it is a valid JPG or PNG.');
     img.onload = () => {
-      if (img.naturalWidth < MIN_IMG_WIDTH || img.naturalHeight < MIN_IMG_HEIGHT) {
-        showError(
-          `Image is too small (${img.naturalWidth}×${img.naturalHeight} px). ` +
-          `Minimum size is ${MIN_IMG_WIDTH}×${MIN_IMG_HEIGHT} px.`
-        );
-        return;
-      }
-
       currentFile     = file;
       currentImg      = img;
       currentBaseName = file.name.replace(/\.[^.]+$/, '') || 'image';
@@ -420,6 +414,56 @@ function handleFile(file) {
 }
 
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
+
+function calcPaintTime(cellIndices, cols, rows) {
+  // Build adjacency: for each cell, check right and down neighbors only (to avoid double counting)
+  // Use Union-Find to group adjacent same-color cells
+  const parent = cellIndices.map((_, i) => i);
+  function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
+  function union(a, b) { parent[find(a)] = find(b); }
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const i = row * cols + col;
+      if (cellIndices[i] === 0) continue; // skip white
+      // right neighbor
+      if (col + 1 < cols) {
+        const j = row * cols + col + 1;
+        if (cellIndices[j] === cellIndices[i]) union(i, j);
+      }
+      // down neighbor
+      if (row + 1 < rows) {
+        const j = (row + 1) * cols + col;
+        if (cellIndices[j] === cellIndices[i]) union(i, j);
+      }
+    }
+  }
+
+  // Count group sizes
+  const groupSize = {};
+  for (let i = 0; i < cellIndices.length; i++) {
+    if (cellIndices[i] === 0) continue;
+    const root = find(i);
+    groupSize[root] = (groupSize[root] || 0) + 1;
+  }
+
+  // Calculate total seconds
+  let totalSec = 0;
+  for (const root in groupSize) {
+    const sz = groupSize[root];
+    totalSec += 7 + (sz - 1) * 2; // first cell = 7s, rest = 2s each
+  }
+
+  return totalSec;
+}
+
+function formatTime(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
 
 async function runPipeline() {
   setLoading(true, 'Sampling image…');
@@ -473,6 +517,19 @@ async function runPipeline() {
     mosaicPreview.dataset.svg = svgToString(mosaicSVG);
 
     renderPaletteUI(cellIndices);
+
+    // Compute and display stats
+    const totalCells  = cellIndices.length;
+    const colorCells  = cellIndices.filter(i => i !== 0).length;
+    const paintSec    = calcPaintTime(cellIndices, cols, rows);
+    const timeStr     = formatTime(paintSec);
+
+    lastStats = { totalCells, colorCells, timeStr };
+
+    document.getElementById('statTotalCells').textContent = totalCells.toLocaleString();
+    document.getElementById('statColorCells').textContent = colorCells.toLocaleString();
+    document.getElementById('statTime').textContent       = timeStr;
+    document.getElementById('statsCard').style.display    = 'block';
 
     paletteCard.style.display    = 'block';
     resultsSection.style.display = 'grid';
@@ -633,8 +690,9 @@ function buildGridSVG(cellIndices, layout) {
 
   const svg = makeSVG(gridPixelW, totalH);
 
-  // White background
-  svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
+  // White background (black for circles)
+  const bgColor = layout.label === 'Circles' ? '#000000' : '#ffffff';
+  svg.appendChild(rect(0, 0, gridPixelW, totalH, bgColor));
 
   // For Iso Triangles, use a clipPath so odd-row overflow is clipped to grid bounds
   let cellParent = svg;
@@ -688,7 +746,7 @@ function buildGridSVG(cellIndices, layout) {
   }
 
   // Legend appended below the grid
-  appendLegend(svg, gridPixelH, gridPixelW);
+  appendLegend(svg, gridPixelH, gridPixelW, lastStats);
 
   return svg;
 }
@@ -707,8 +765,9 @@ function buildMosaicSVG(cellIndices, layout) {
 
   const svg = makeSVG(gridPixelW, totalH);
 
-  // White background — covers uncovered corners for triangle layout
-  svg.appendChild(rect(0, 0, gridPixelW, totalH, '#ffffff'));
+  // White background (black for circles) — covers uncovered corners for triangle layout
+  const bgColorM = layout.label === 'Circles' ? '#000000' : '#ffffff';
+  svg.appendChild(rect(0, 0, gridPixelW, totalH, bgColorM));
 
   // For Iso Triangles, use a clipPath so odd-row overflow is clipped to grid bounds
   let cellParent = svg;
@@ -757,7 +816,7 @@ function buildMosaicSVG(cellIndices, layout) {
   }
 
   // Legend appended below the grid
-  appendLegend(svg, gridPixelH, gridPixelW);
+  appendLegend(svg, gridPixelH, gridPixelW, lastStats);
 
   return svg;
 }
@@ -837,7 +896,7 @@ function drawSquareCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   cellRect(svg, x, y, cW, cH, fill);
   // White/no-paint cells get no number — left blank per client spec
   if (withNumber && !isWhite) {
-    svg.appendChild(text(x + cW / 2, y + cH / 2, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(cW * 0.38))));
+    svg.appendChild(text(x + cW / 2, y + cH / 2, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(cW * 0.65))));
   }
 }
 
@@ -881,7 +940,7 @@ function drawHexCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, for
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(s * 0.55))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(s * 0.85))));
   }
 }
 
@@ -921,7 +980,7 @@ function drawTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.45))));
   }
 }
 
@@ -1034,7 +1093,7 @@ function drawCircleCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, 
   svg.appendChild(circle);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(r * 0.65))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(5, Math.floor(r * 0.95))));
   }
 }
 
@@ -1088,7 +1147,7 @@ function drawOgeeCell(svg, col, row, cW, cH, color, num, isWhite, withNumber, fo
   svg.appendChild(path);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.48))));
   }
 }
 
@@ -1134,7 +1193,7 @@ function drawIsoTriangleCell(svg, col, row, cW, cH, color, num, isWhite, withNum
   if (withNumber && !isWhite) {
     const cx = xMid;
     const cy = isUp ? yT + cH * 0.65 : yT + cH * 0.38;
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(3, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(3, Math.floor(cW * 0.42))));
   }
 }
 
@@ -1170,7 +1229,7 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
   svg.appendChild(poly);
 
   if (withNumber && !isWhite) {
-    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.28))));
+    svg.appendChild(text(cx, cy, cellNumStr(num), NUM_COLOR, Math.max(4, Math.floor(cW * 0.5))));
   }
 }
 
@@ -1180,7 +1239,7 @@ function drawDiamondCell(svg, col, row, cW, cH, color, num, isWhite, withNumber,
 // Each entry: color swatch on the left, zero-padded number on the right.
 // Appended directly below the grid, white background, black border.
 
-function appendLegend(svg, offsetY, svgW) {
+function appendLegend(svg, offsetY, svgW, stats) {
   // Build the ordered list: 01→24 are palette indices 1–24, 25 is palette index 0 (white)
   const orderedIndices = [];
   for (let i = 1; i <= 24; i++) orderedIndices.push(i); // 01–24
@@ -1227,6 +1286,22 @@ function appendLegend(svg, offsetY, svgW) {
     numLbl.textContent = String(displayNum).padStart(2, '0');
     svg.appendChild(numLbl);
   });
+
+  // Footer stats line (if available)
+  if (stats) {
+    const footerY = offsetY + legendH - padBot / 2;
+    const footerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    footerTxt.setAttribute('x', svgW / 2);
+    footerTxt.setAttribute('y', footerY);
+    footerTxt.setAttribute('text-anchor', 'middle');
+    footerTxt.setAttribute('dominant-baseline', 'central');
+    footerTxt.setAttribute('font-family', 'Arial, sans-serif');
+    footerTxt.setAttribute('font-size', '9');
+    footerTxt.setAttribute('fill', '#555555');
+    footerTxt.textContent =
+      `Cells: ${stats.colorCells.toLocaleString()} to colour of ${stats.totalCells.toLocaleString()} total  ·  Est. time: ${stats.timeStr}`;
+    svg.appendChild(footerTxt);
+  }
 
   return legendH;
 }

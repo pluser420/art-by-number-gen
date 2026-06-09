@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paint-by-Numbers Generator</title>
+  <title>Paint by Numbers – Discover the mystery pictures</title>
   <link rel="stylesheet" href="asset/style.css" />
   <link rel="icon" type="image/png" href="asset/favicon.png" />
 </head>
@@ -15,7 +15,7 @@
       <img src="asset/logo.png" alt="Paint-by-Numbers Generator" class="topbar-logo" />
       <div>
         <h1 class="topbar-title">Paint-by-Numbers Generator</h1>
-        <p class="topbar-sub">Upload a photo, pick a grid, download printable SVGs.</p>
+        <p class="topbar-sub">Paint by Numbers – Discover the mystery pictures</p>
       </div>
     </div>
   </header>
@@ -29,7 +29,7 @@
         <!-- Left: drop zone -->
         <div class="drop-zone" id="dropZone">
           <p class="drop-main">Drop an image here</p>
-          <p class="drop-hint">JPG or PNG · max 20 MB · min 40×60 px</p>
+          <p class="drop-hint">JPG or PNG · max 20 MB</p>
           <input type="file" id="fileInput" accept="image/jpeg,image/png" style="display:none;" />
           <label for="fileInput" class="btn btn-browse">Browse files</label>
         </div>
@@ -68,13 +68,13 @@
           <label class="control-label">Grid Size</label>
           <div class="grid-size-inputs">
             <div class="grid-size-field">
-              <label class="grid-size-label" for="colsInput">Cols</label>
-              <input type="number" id="colsInput" class="grid-size-input" min="4" max="200" value="40" />
+              <label class="grid-size-label" for="colsInput">Width</label>
+              <input type="number" id="colsInput" class="grid-size-input" min="1" max="500" value="40" />
             </div>
             <span class="grid-size-sep">×</span>
             <div class="grid-size-field">
-              <label class="grid-size-label" for="rowsInput">Rows</label>
-              <input type="number" id="rowsInput" class="grid-size-input" min="4" max="200" value="60" />
+              <label class="grid-size-label" for="rowsInput">Height</label>
+              <input type="number" id="rowsInput" class="grid-size-input" min="1" max="500" value="60" />
             </div>
           </div>
         </div>
@@ -88,6 +88,24 @@
     <section class="card palette-card" id="paletteCard">
       <p class="section-label">COLORS USED</p>
       <div class="palette-swatches" id="colorPalette"></div>
+    </section>
+
+    <!-- Stats bar -->
+    <section class="card stats-card" id="statsCard" style="display:none;">
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-label">TOTAL CELLS</span>
+          <span class="stat-value" id="statTotalCells">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">CELLS TO COLOUR</span>
+          <span class="stat-value" id="statColorCells">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">EST. TIME</span>
+          <span class="stat-value" id="statTime">—</span>
+        </div>
+      </div>
     </section>
 
     <!-- Loading overlay -->
