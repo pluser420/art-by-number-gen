@@ -1255,7 +1255,7 @@ function appendLegend(svg, offsetY, svgW, stats) {
   const colW    = Math.floor((svgW - padX * 2) / legendCols);
   const swatchW = 16;
   const swatchH = 13;
-  const legendH = legendRows * itemH + padTop + padBot + 10; // extra space for footer text
+  const legendH = legendRows * itemH + padTop + padBot + 24; // extra space for footer text
 
   // Legend background + border
   svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1.5));
@@ -1289,7 +1289,7 @@ function appendLegend(svg, offsetY, svgW, stats) {
 
   // Footer stats line (if available)
   if (stats) {
-    const footerY = offsetY + legendH - padBot / 2;
+    const footerY = offsetY + legendH - 10;
     const footerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     footerTxt.setAttribute('x', svgW / 2);
     footerTxt.setAttribute('y', footerY);
