@@ -682,10 +682,10 @@ function buildGridSVG(cellIndices, layout) {
   const gridPixelH = computeGridHeight(layout);
 
   // Pre-calculate legend height so we can size the SVG correctly up front
-  // Legend is always 25 entries (01–25) in 5 columns × 5 rows
+  // Legend is always 25 entries (01–25) in 5 columns × 5 rows + footer
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendH     = 5 * legendItemH + legendPad * 2;
+  const legendH     = 5 * legendItemH + legendPad * 2 + 24; // +24 for footer stats line
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -757,10 +757,10 @@ function buildMosaicSVG(cellIndices, layout) {
   const gridPixelH = computeGridHeight(layout);
 
   // Pre-calculate legend height
-  // Legend is always 25 entries (01–25) in 5 columns × 5 rows
+  // Legend is always 25 entries (01–25) in 5 columns × 5 rows + footer
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendH     = 5 * legendItemH + legendPad * 2;
+  const legendH     = 5 * legendItemH + legendPad * 2 + 24; // +24 for footer stats line
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
