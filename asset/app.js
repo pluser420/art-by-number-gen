@@ -67,7 +67,7 @@ const GRID_LAYOUTS = {
   },
   triangles: {
     label: 'Triangles',
-    cols: 80, rows: 60,   // each logical cell = 2 triangles (up + down)
+    cols: 40, rows: 60,
     cellW: 24, cellH: 24,
     draw: drawTriangleCell,
     sample: sampleTriangle,
@@ -81,8 +81,8 @@ const GRID_LAYOUTS = {
   },
   diamonds: {
     label: 'Diamonds',
-    cols: 40, rows: 120,
-    cellW: 24, cellH: 24,  // equal W and H → 90° angles (square rotated 45°)
+    cols: 40, rows: 60,
+    cellW: 24, cellH: 24,
     draw: drawDiamondCell,
     sample: sampleSquare,
   },
@@ -96,8 +96,8 @@ const GRID_LAYOUTS = {
   },
   isotriangles: {
     label: 'Iso Triangles',
-    cols: 80, rows: 60,
-    cellW: 14, cellH: 12,  // cols = total triangles per row; cellW = base of each; cellH = cellW*√3/2
+    cols: 40, rows: 60,
+    cellW: 14, cellH: 12,
     draw: drawIsoTriangleCell,
     sample: sampleIsoTriangle,
   },
