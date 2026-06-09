@@ -1289,7 +1289,7 @@ function appendLegend(svg, offsetY, svgW, stats) {
 
   // Footer stats line (if available)
   if (stats) {
-    const footerY = offsetY + legendH - 10;
+    const footerY = offsetY + legendRows * itemH + padTop + padBot + 12;
     const footerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     footerTxt.setAttribute('x', svgW / 2);
     footerTxt.setAttribute('y', footerY);
@@ -1297,7 +1297,7 @@ function appendLegend(svg, offsetY, svgW, stats) {
     footerTxt.setAttribute('dominant-baseline', 'central');
     footerTxt.setAttribute('font-family', 'Arial, sans-serif');
     footerTxt.setAttribute('font-size', '13');
-    footerTxt.setAttribute('fill', '#555555');
+    footerTxt.setAttribute('fill', '#333333');
     footerTxt.textContent =
       `Cells: ${stats.colorCells.toLocaleString()} to colour of ${stats.totalCells.toLocaleString()} total  ·  Est. time: ${stats.timeStr}`;
     svg.appendChild(footerTxt);
