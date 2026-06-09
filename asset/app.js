@@ -685,7 +685,7 @@ function buildGridSVG(cellIndices, layout) {
   // Legend is always 25 entries (01–25) in 5 columns × 5 rows + footer
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendH     = 5 * legendItemH + legendPad * 2 + 24; // +24 for footer stats line
+  const legendH     = 5 * legendItemH + legendPad * 2 + 36; // +36 for footer stats
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -760,7 +760,7 @@ function buildMosaicSVG(cellIndices, layout) {
   // Legend is always 25 entries (01–25) in 5 columns × 5 rows + footer
   const legendItemH = 20;
   const legendPad   = 14;
-  const legendH     = 5 * legendItemH + legendPad * 2 + 24; // +24 for footer stats line
+  const legendH     = 5 * legendItemH + legendPad * 2 + 36; // +36 for footer stats
   const totalH      = gridPixelH + legendH;
 
   const svg = makeSVG(gridPixelW, totalH);
@@ -1255,7 +1255,7 @@ function appendLegend(svg, offsetY, svgW, stats) {
   const colW    = Math.floor((svgW - padX * 2) / legendCols);
   const swatchW = 16;
   const swatchH = 13;
-  const legendH = legendRows * itemH + padTop + padBot + 24; // extra space for footer text
+  const legendH = legendRows * itemH + padTop + padBot + 36; // extra space for footer stats
 
   // Legend background + border
   svg.appendChild(rect(0, offsetY, svgW, legendH, '#ffffff', '#000000', 1.5));
@@ -1288,19 +1288,57 @@ function appendLegend(svg, offsetY, svgW, stats) {
   });
 
   // Footer stats line (if available)
+  // Footer stats section — three stat blocks below the legend rows
   if (stats) {
-    const footerY = offsetY + legendRows * itemH + padTop + padBot + 12;
-    const footerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    footerTxt.setAttribute('x', svgW / 2);
-    footerTxt.setAttribute('y', footerY);
-    footerTxt.setAttribute('text-anchor', 'middle');
-    footerTxt.setAttribute('dominant-baseline', 'central');
-    footerTxt.setAttribute('font-family', 'Arial, sans-serif');
-    footerTxt.setAttribute('font-size', '13');
-    footerTxt.setAttribute('fill', '#333333');
-    footerTxt.textContent =
-      `Cells: ${stats.colorCells.toLocaleString()} to colour of ${stats.totalCells.toLocaleString()} total  ·  Est. time: ${stats.timeStr}`;
-    svg.appendChild(footerTxt);
+    const footerH  = 36;
+    // Extend the legend background to include the footer
+    // (already included in legendH via +24, but redraw a separator line)
+    const sepY = offsetY + legendRows * itemH + padTop + padBot;
+    // Separator line
+    const sep = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    sep.setAttribute('x1', padX); sep.setAttribute('y1', sepY);
+    sep.setAttribute('x2', svgW - padX); sep.setAttribute('y2', sepY);
+    sep.setAttribute('stroke', '#cccccc'); sep.setAttribute('stroke-width', '0.75');
+    svg.appendChild(sep);
+
+    // Three stat blocks: Total Cells | Cells to Colour | Est. Time
+    const statsData = [
+      { label: 'TOTAL CELLS',     value: stats.totalCells.toLocaleString() },
+      { label: 'CELLS TO COLOUR', value: stats.colorCells.toLocaleString() },
+      { label: 'EST. TIME',       value: stats.timeStr },
+    ];
+    const blockW = Math.floor((svgW - padX * 2) / 3);
+    const blockY = sepY + 6;
+
+    statsData.forEach((s, i) => {
+      const bx = padX + i * blockW + blockW / 2;
+
+      // Label
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('x', bx);
+      lbl.setAttribute('y', blockY + 4);
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('dominant-baseline', 'hanging');
+      lbl.setAttribute('font-family', 'Arial, sans-serif');
+      lbl.setAttribute('font-size', '8');
+      lbl.setAttribute('font-weight', 'bold');
+      lbl.setAttribute('fill', '#888888');
+      lbl.textContent = s.label;
+      svg.appendChild(lbl);
+
+      // Value
+      const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      val.setAttribute('x', bx);
+      val.setAttribute('y', blockY + 15);
+      val.setAttribute('text-anchor', 'middle');
+      val.setAttribute('dominant-baseline', 'hanging');
+      val.setAttribute('font-family', 'Arial, sans-serif');
+      val.setAttribute('font-size', '13');
+      val.setAttribute('font-weight', 'bold');
+      val.setAttribute('fill', '#111111');
+      val.textContent = s.value;
+      svg.appendChild(val);
+    });
   }
 
   return legendH;
