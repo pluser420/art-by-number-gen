@@ -373,6 +373,14 @@ downloadMosaic.addEventListener('click', () => {
   downloadSVG(mosaicPreview.querySelector('svg'), `${currentBaseName}_mosaic.svg`);
 });
 
+document.getElementById('downloadGridPdf').addEventListener('click', () => {
+  downloadPDF(gridPreview.querySelector('svg'), `${currentBaseName}_grid.pdf`);
+});
+
+document.getElementById('downloadMosaicPdf').addEventListener('click', () => {
+  downloadPDF(mosaicPreview.querySelector('svg'), `${currentBaseName}_mosaic.pdf`);
+});
+
 // ─── File Handling ────────────────────────────────────────────────────────────
 
 function handleFile(file) {
@@ -1430,6 +1438,44 @@ function downloadSVG(svgEl, filename) {
   a.href     = url;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// PDF conversion via backend server
+const PDF_SERVER = 'https://paint-by-numbers-pdf.up.railway.app';
+
+async function downloadPDF(svgEl, filename) {
+  if (!svgEl) return;
+  const svgStr = svgToString(svgEl);
+  const btn = filename.includes('grid')
+    ? document.getElementById('downloadGridPdf')
+    : document.getElementById('downloadMosaicPdf');
+
+  btn.disabled    = true;
+  btn.textContent = 'Converting…';
+
+  try {
+    const response = await fetch(`${PDF_SERVER}/convert-pdf`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ svg: svgStr }),
+    });
+
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+    const blob = await response.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.download = filename;
+    a.href     = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showError('PDF conversion failed: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Download PDF (CMYK)';
+  }
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
