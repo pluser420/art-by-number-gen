@@ -537,7 +537,7 @@ async function runPipeline() {
     document.getElementById('statTotalCells').textContent = totalCells.toLocaleString();
     document.getElementById('statColorCells').textContent = colorCells.toLocaleString();
     document.getElementById('statTime').textContent       = timeStr;
-    document.getElementById('statsCard').style.display    = 'block';
+    // Stats shown in SVG footer only — keep statsCard hidden
 
     paletteCard.style.display    = 'block';
     resultsSection.style.display = 'grid';
